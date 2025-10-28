@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NSE Portfolio — Modern</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* small tweaks beyond Tailwind */
+    .glass { background: rgba(255,255,255,0.6); backdrop-filter: blur(6px); }
+    .muted { color: rgba(17,24,39,0.6); }
+    .clickable { cursor: pointer; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-50 to-sky-50 flex items-center justify-center p-6">
+  <div class="w-full max-w-5xl">
+    <div class="grid grid-cols-12 gap-6">
+
+      <!-- Left: Login / user -->
+      <div class="col-span-12 md:col-span-4">
+        <div id="authCard" class="glass rounded-2xl p-6 shadow-lg">
+          <h2 class="text-2xl font-semibold mb-2">Welcome</h2>
+          <p class="muted mb-4">Sign in to manage your NSE portfolio (local-only)</p>
+
+          <div id="authForm">
+            <label class="block mb-2 text-sm">Username
+              <input id="username" class="mt-1 w-full rounded-md border-gray-200 shadow-sm" placeholder="yourname" />
+            </label>
+            <label class="block mb-4 text-sm">Password
+              <input id="password" type="password" class="mt-1 w-full rounded-md border-gray-200 shadow-sm" placeholder="choose a password" />
+            </label>
+
+            <div class="flex gap-2">
+              <button id="btnRegister" class="flex-1 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Register</button>
+              <button id="btnLogin" class="flex-1 py-2 rounded-lg border border-slate-200 bg-white">Login</button>
+            </div>
+            <div class="mt-3 text-xs muted">This app stores data locally in your browser. Do not use real passwords you care about.</div>
+          </div>
+
+          <div id="userPanel" class="hidden">
+            <div class="flex items-center justify-between">
+              <div>
+                <div id="displayUser" class="font-medium text-lg">—</div>
+                <div class="text-sm muted" id="statusMsg">Portfolio ready</div>
+              </div>
+              <div>
+                <button id="btnLogout" class="py-2 px-3 rounded-lg border bg-white">Logout</button>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <button id="btnAdd" class="w-full py-2 rounded-lg bg-sky-600 text-white mb-2">Add stock</button>
+              <button id="btnFetchAll" class="w-full py-2 rounded-lg border bg-white mb-2">Refresh prices</button>
+              <div class="flex gap-2">
+                <button id="btnImport" class="flex-1 py-2 rounded-lg border bg-white">Import JSON</button>
+                <button id="btnExport" class="flex-1 py-2 rounded-lg border bg-white">Export</button>
+              </div>
+            </div>
+          </div>
+
+          <input id="fileInput" type="file" accept="application/json" class="hidden" />
+
+          <div class="mt-6 text-xs muted">
+            <strong>Notes:</strong> Live prices fetched from Google Finance. If a fetch is blocked by CORS, the app will try a safe proxy fallback.
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Portfolio table -->
+      <div class="col-span-12 md:col-span-8">
+        <div id="portfolioCard" class="glass rounded-2xl p-6 shadow-lg hidden">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold">Your Portfolio</h3>
+            <div class="text-sm muted">Updated: <span id="lastUpdated">-</span></div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left table-auto">
+              <thead>
+                <tr class="text-sm text-slate-600 border-b">
+                  <th class="py-2">Stock</th>
+                  <th class="py-2">Qty</th>
+                  <th class="py-2">Buy</th>
+                  <th class="py-2">Live</th>
+                  <th class="py-2">Invested</th>
+                  <th class="py-2">Current</th>
+                  <th class="py-2">P/L%</th>
+                  <th class="py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tblBody" class="text-sm"></tbody>
+              <tfoot class="text-sm font-medium border-t">
+                <tr>
+                  <td colspan="4" class="py-3">Totals</td>
+                  <td id="totInvested" class="py-3">-</td>
+                  <td id="totCurrent" class="py-3">-</td>
+                  <td id="totPL" class="py-3">-</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="mt-4 text-xs muted">Tip: Use Import/Export to back up your portfolio.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal Add / Edit -->
+  <div id="modalWrap" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-lg">
+      <h4 id="modalTitle" class="text-lg font-semibold mb-2">Add Stock</h4>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="col-span-2">Symbol (NSE)
+          <input id="mSymbol" class="mt-1 w-full rounded-md border-gray-200 shadow-sm" placeholder="RELIANCE" />
+        </label>
+        <label>Quantity
+          <input id="mQty" type="number" min="1" class="mt-1 w-full rounded-md border-gray-200 shadow-sm" value="1" />
+        </label>
+        <label>Buy Price
+          <input id="mBuy" type="number" step="0.01" class="mt-1 w-full rounded-md border-gray-200 shadow-sm" />
+        </label>
+      </div>
+      <div class="mt-4 flex gap-2 justify-end">
+        <button id="modalCancel" class="px-4 py-2 rounded-lg border">Cancel</button>
+        <button id="modalSave" class="px-4 py-2 rounded-lg bg-sky-600 text-white">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- Config & helpers ----------
+    const PROXY_FALLBACK = 'https://api.allorigins.win/raw?url='; // public proxy (no auth)
+    const STORAGE_PREFIX = 'nse_portfolio_user_';
+
+    function $(id){return document.getElementById(id)}
+    function notify(msg){ /* simple console + small status */ console.log(msg); }
+    function formatNum(n){ return Number.isFinite(n) ? n.toFixed(2) : '-'; }
+
+    // ---------- Auth & Storage (local-only) ----------
+    function saveUserCreds(username, password){ const key = 'nse_app_user'; const existing = JSON.parse(localStorage.getItem(key) || '{}'); existing[username] = btoa(password); localStorage.setItem(key, JSON.stringify(existing)); }
+    function validateUser(username, password){ const key = 'nse_app_user'; const existing = JSON.parse(localStorage.getItem(key) || '{}'); return existing[username] && existing[username] === btoa(password); }
+
+    function savePortfolioForUser(username, portfolio){ localStorage.setItem(STORAGE_PREFIX + username, JSON.stringify(portfolio)); }
+    function loadPortfolioForUser(username){ try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX + username) || '[]'); } catch(e){ return []; } }
+
+    // ---------- Google Finance fetch (direct then fallback) ----------
+    async function fetchGooglePriceDirect(symbol){
+      try{
+        const url = `https://www.google.com/finance/quote/${encodeURIComponent(symbol)}:NSE`;
+        const res = await fetch(url);
+        if(!res.ok) throw new Error('non-ok');
+        const html = await res.text();
+        const match = html.match(/<div[^>]*class="YMlKec fxKbKc"[^>]*>([^<]+)<\/div>/);
+        if(match && match[1]){ const price = parseFloat(match[1].replace(/[^0-9.]/g, '')); return price; }
+        return null;
+      }catch(err){ console.warn('direct fetch failed', err); return null; }
+    }
+
+    async function fetchGooglePrice(symbol){
+      // try direct first
+      let p = await fetchGooglePriceDirect(symbol);
+      if(p) return p;
+      // fallback to proxy
+      try{
+        const url = PROXY_FALLBACK + encodeURIComponent(`https://www.google.com/finance/quote/${symbol}:NSE`);
+        const res = await fetch(url);
+        if(!res.ok) throw new Error('proxy fail');
+        const html = await res.text();
+        const match = html.match(/<div[^>]*class="YMlKec fxKbKc"[^>]*>([^<]+)<\/div>/);
+        if(match && match[1]) return parseFloat(match[1].replace(/[^0-9.]/g, ''));
+        return null;
+      }catch(err){ console.warn('proxy fetch failed', err); return null; }
+    }
+
+    // ---------- UI bindings & logic ----------
+    let currentUser = null;
+    let currentPortfolio = [];
+    let editingIndex = null;
+
+    function showAuth(){ $('#authCard').classList.remove('hidden'); $('#portfolioCard').classList.add('hidden'); }
+    function showDashboard(){ $('#authCard').classList.add('hidden'); $('#portfolioCard').classList.remove('hidden'); }
+
+    function setLoggedIn(user){ currentUser = user; $('#displayUser').textContent = user; $('#statusMsg').textContent = 'Welcome — loading portfolio...'; $('#authForm').classList.add('hidden'); $('#userPanel').classList.remove('hidden'); $('#modalWrap').classList.add('hidden'); }
+    function setLoggedOut(){ currentUser = null; currentPortfolio=[]; $('#authForm').classList.remove('hidden'); $('#userPanel').classList.add('hidden'); $('#displayUser').textContent='—'; $('#statusMsg').textContent=''; }
+
+    // render portfolio table
+    function renderTable(){ const tbody = $('#tblBody'); tbody.innerHTML=''; let invested = 0, currentVal = 0;
+      currentPortfolio.forEach((it, idx)=>{
+        const live = it.live || it.buy || 0;
+        const investedRow = it.qty * it.buy;
+        const currRow = it.qty * live;
+        invested += investedRow; currentVal += currRow;
+        const plPerc = it.buy ? ((live - it.buy)/it.buy*100) : 0;
+        const tr = document.createElement('tr');
+        tr.className = 'border-b';
+        tr.innerHTML = `
+          <td class="py-2 font-medium">${it.symbol}</td>
+          <td class="py-2">${it.qty}</td>
+          <td class="py-2">${formatNum(it.buy)}</td>
+          <td class="py-2">${formatNum(live)}</td>
+          <td class="py-2">${formatNum(investedRow)}</td>
+          <td class="py-2">${formatNum(currRow)}</td>
+          <td class="py-2">${plPerc.toFixed(2)}%</td>
+          <td class="py-2">
+            <button data-i="${idx}" class="px-2 py-1 rounded bg-white border mr-1 small fetchBtn">Refresh</button>
+            <button data-i="${idx}" class="px-2 py-1 rounded bg-slate-100 border mr-1 small editBtn">Edit</button>
+            <button data-i="${idx}" class="px-2 py-1 rounded bg-red-50 text-red-600 border delBtn">Del</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      $('#totInvested').textContent = formatNum(invested);
+      $('#totCurrent').textContent = formatNum(currentVal);
+      const totPL = invested ? ((currentVal - invested)/invested*100) : 0;
+      $('#totPL').textContent = totPL.toFixed(2) + '%';
+      // wire buttons
+      document.querySelectorAll('.delBtn').forEach(b=>b.onclick = e=>{ const i = +e.target.dataset.i; currentPortfolio.splice(i,1); savePortfolioForUser(currentUser, currentPortfolio); renderTable(); });
+      document.querySelectorAll('.editBtn').forEach(b=>b.onclick = e=>{ openModalForEdit(+e.target.dataset.i); });
+      document.querySelectorAll('.fetchBtn').forEach(b=>b.onclick = async e=>{ const i = +e.target.dataset.i; const s = currentPortfolio[i].symbol; const p = await fetchGooglePrice(s); if(p){ currentPortfolio[i].live = p; savePortfolioForUser(currentUser,currentPortfolio); renderTable(); $('#lastUpdated').textContent = new Date().toLocaleString(); } else alert('Price fetch failed for ' + s); });
+    }
+
+    // load & fetch all
+    async function loadAndFetchAll(){ currentPortfolio = loadPortfolioForUser(currentUser) || []; renderTable(); // fetch live prices async
+      for(let i=0;i<currentPortfolio.length;i++){ try{ const p = await fetchGooglePrice(currentPortfolio[i].symbol); if(p) currentPortfolio[i].live = p; }catch(e){ console.warn(e); } }
+      savePortfolioForUser(currentUser, currentPortfolio); renderTable(); $('#lastUpdated').textContent = new Date().toLocaleString(); }
+
+    // modal add/edit
+    function openModalForAdd(){ editingIndex = null; $('#modalTitle').textContent = 'Add stock'; $('#mSymbol').value=''; $('#mQty').value=1; $('#mBuy').value=''; $('#modalWrap').classList.remove('hidden'); }
+    function openModalForEdit(i){ editingIndex = i; const it = currentPortfolio[i]; $('#modalTitle').textContent = 'Edit stock'; $('#mSymbol').value = it.symbol; $('#mQty').value = it.qty; $('#mBuy').value = it.buy; $('#modalWrap').classList.remove('hidden'); }
+
+    // event wiring
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // initial UI state
+      showAuth(); setLoggedOut();
+
+      $('#btnRegister').onclick = ()=>{ const u = $('#username').value.trim(); const p = $('#password').value; if(!u||!p) return alert('enter username & password'); saveUserCreds(u,p); alert('Registered. Now please login.'); };
+      $('#btnLogin').onclick = ()=>{ const u = $('#username').value.trim(); const p = $('#password').value; if(!u||!p) return alert('enter username & password'); if(validateUser(u,p)){ setLoggedIn(u); showDashboard(); loadAndFetchAll(); } else { alert('Invalid credentials. If first time, register first.'); } };
+      $('#btnLogout').onclick = ()=>{ setLoggedOut(); showAuth(); };
+
+      $('#btnAdd').onclick = openModalForAdd;
+      $('#modalCancel').onclick = ()=>$('#modalWrap').classList.add('hidden');
+      $('#modalSave').onclick = async ()=>{
+        const s = $('#mSymbol').value.trim().toUpperCase(); const q = parseFloat($('#mQty').value); const b = parseFloat($('#mBuy').value);
+        if(!s || !(q>0) || !(b>0)) return alert('Enter valid symbol, qty, buy price');
+        const entry = { symbol: s, qty: q, buy: b };
+        if(editingIndex===null) currentPortfolio.push(entry); else currentPortfolio[editingIndex] = Object.assign(currentPortfolio[editingIndex], entry);
+        savePortfolioForUser(currentUser, currentPortfolio);
+        $('#modalWrap').classList.add('hidden'); renderTable(); // fetch live price for the new/edited entry
+        const idx = (editingIndex===null) ? currentPortfolio.length-1 : editingIndex;
+        const p = await fetchGooglePrice(currentPortfolio[idx].symbol);
+        if(p){ currentPortfolio[idx].live = p; savePortfolioForUser(currentUser,currentPortfolio); renderTable(); $('#lastUpdated').textContent = new Date().toLocaleString(); }
+      };
+
+      $('#btnFetchAll').onclick = async ()=>{ $('#statusMsg').textContent = 'Refreshing prices...'; await loadAndFetchAll(); $('#statusMsg').textContent = 'Prices updated'; };
+
+      // Import/Export
+      $('#btnExport').onclick = ()=>{ const data = loadPortfolioForUser(currentUser)||[]; const blob = new Blob([JSON.stringify(data,null,2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = currentUser + '-portfolio.json'; a.click(); URL.revokeObjectURL(url); };
+      $('#btnImport').onclick = ()=>$('#fileInput').click();
+      $('#fileInput').onchange = e=>{ const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = ()=>{ try{ const d = JSON.parse(r.result); if(Array.isArray(d)){ currentPortfolio = d; savePortfolioForUser(currentUser,currentPortfolio); renderTable(); alert('Imported'); } else alert('Invalid JSON format (expected array)'); } catch(err){ alert('Invalid JSON'); } }; r.readAsText(f); };
+
+      // keyboard: if user already registered and logged in from previous session, auto-login
+      const savedUsers = JSON.parse(localStorage.getItem('nse_app_user')||'{}'); const lastUser = Object.keys(savedUsers)[0]; // naive
+      if(lastUser){ /* do not auto-login; keep on login screen */ }
+    });
+
+  </script>
+</body>
+</html>
