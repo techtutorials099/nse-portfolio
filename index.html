@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NSE Portfolio — PIN Login + Dark Mode</title>
+  <title>NSE Portfolio — Responsive (FAB + Suggestions)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root{--bg:#f8fafc;--card:#ffffff;--muted:rgba(17,24,39,0.6);}
     .dark{--bg:#0b1220;--card:rgba(17,24,39,0.85);--muted:rgba(203,213,225,0.7);} 
-    body{background:linear-gradient(135deg,var(--bg),#e6f2ff);}
-    .glass{background:var(--card);backdrop-filter:blur(6px)}
-    .muted{color:var(--muted)}
+    body{background:linear-gradient(135deg,var(--bg),#e6f2ff);min-height:100vh;}
+    .glass{background:var(--card);backdrop-filter:blur(6px);}
+    .muted{color:var(--muted);}
     table, th, td { border: 1px solid rgba(0,0,0,0.08); }
     .dark table, .dark th, .dark td { border:1px solid rgba(255,255,255,0.06); }
     table { border-collapse: collapse; width: 100%; }
@@ -18,16 +18,17 @@
     .icon-btn{width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px}
     .flash-up{animation:flashUp 1s}@keyframes flashUp{0%{background:rgba(16,185,129,0.12)}100%{background:transparent}}
     .flash-down{animation:flashDown 1s}@keyframes flashDown{0%{background:rgba(239,68,68,0.10)}100%{background:transparent}}
+    /* FAB */
+    .fab { position: fixed; right: 20px; bottom: 20px; z-index: 60; width:56px; height:56px; border-radius: 999px; display:flex;align-items:center;justify-content:center; box-shadow: 0 6px 18px rgba(2,6,23,0.12); }
   </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-6">
+<body class="min-h-screen flex items-start justify-center p-4 sm:p-6">
   <div class="w-full max-w-6xl">
-    <div class="grid grid-cols-12 gap-6">
+    <div class="flex flex-col md:flex-row gap-6">
 
       <!-- Left: Auth / Controls -->
-      <div class="col-span-12 md:col-span-4">
-        <div id="authCard" class="glass rounded-2xl p-6 shadow-lg">
-
+      <aside class="md:w-4/12">
+        <div id="authCard" class="glass rounded-2xl p-6 shadow-lg sticky top-6">
           <!-- Login View -->
           <div id="authView">
             <h2 class="text-2xl font-semibold mb-2">Welcome</h2>
@@ -83,10 +84,10 @@
           </div>
 
         </div>
-      </div>
+      </aside>
 
       <!-- Right: Portfolio -->
-      <div class="col-span-12 md:col-span-8">
+      <main class="md:w-8/12">
         <div id="portfolioCard" class="glass rounded-2xl p-6 shadow-lg hidden">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-xl font-semibold">Your Portfolio</h3>
@@ -124,10 +125,13 @@
 
           <div class="mt-4 text-xs muted">Tip: Use Import/Export to backup your portfolio file.</div>
         </div>
-      </div>
+      </main>
 
     </div>
   </div>
+
+  <!-- FAB for mobile -->
+  <button id="fabAdd" class="fab bg-sky-600 text-white hidden md:hidden" title="Add stock">+</button>
 
   <!-- Modal Add / Edit -->
   <div id="modalWrap" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
@@ -135,7 +139,19 @@
       <h4 id="modalTitle" class="text-lg font-semibold mb-2">Add Stock</h4>
       <div class="grid grid-cols-2 gap-3">
         <label class="col-span-2">Symbol (NSE)
-          <input id="mSymbol" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2 bg-transparent" placeholder="RELIANCE" />
+          <input id="mSymbol" list="suggestions" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2 bg-transparent" placeholder="RELIANCE" />
+          <datalist id="suggestions">
+            <option value="RELIANCE"></option>
+            <option value="TCS"></option>
+            <option value="INFY"></option>
+            <option value="HDFCBANK"></option>
+            <option value="ICICIBANK"></option>
+            <option value="SBIN"></option>
+            <option value="LT"></option>
+            <option value="HINDUNILVR"></option>
+            <option value="AXISBANK"></option>
+            <option value="BHARTIARTL"></option>
+          </datalist>
         </label>
         <label>Quantity
           <input id="mQty" type="number" min="1" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2 bg-transparent" value="1" />
@@ -245,7 +261,7 @@
       $('themeToggle').onclick=()=>{ const now = document.documentElement.classList.contains('dark')? 'light' : 'dark'; applyTheme(now); };
 
       // add/edit modal
-      $('btnAdd').onclick=openAdd; $('modalCancel').onclick=()=>$('modalWrap').classList.add('hidden');
+      $('btnAdd').onclick=openAdd; $('fabAdd').onclick=openAdd; $('modalCancel').onclick=()=>$('modalWrap').classList.add('hidden');
       $('modalSave').onclick=async ()=>{ const s=$('mSymbol').value.trim().toUpperCase(); const q=parseFloat($('mQty').value); const b=parseFloat($('mBuy').value); if(!s||!(q>0)||!(b>0)){ alert('Enter valid symbol, qty and buy price'); return;} const entry={symbol:s,qty:q,buy:b}; if(editIndex===null) portfolio.push(entry); else portfolio[editIndex]=Object.assign(portfolio[editIndex],entry); savePortfolioForUser(currentUser,portfolio); $('modalWrap').classList.add('hidden'); renderTable(); const idx=(editIndex===null)?portfolio.length-1:editIndex; const p=await fetchPrice(portfolio[idx].symbol); if(p!==null){ portfolio[idx].live=p; savePortfolioForUser(currentUser,portfolio); renderTable(); $('lastUpdated').textContent=new Date().toLocaleString(); } };
 
       // fetch all
@@ -259,9 +275,12 @@
       // prevent form submit
       $('authForm').addEventListener('submit', e=>e.preventDefault());
 
-      // initial ui
-      // if user had a preferred theme, apply
+      // initial ui: ensure mobile FAB visibility and theme
       const pref = localStorage.getItem(THEME_KEY) || 'light'; applyTheme(pref);
+      // show FAB on small screens (using JS to avoid Tailwind compile needs)
+      function updateFAB(){ if(window.innerWidth < 768){ $('fabAdd').classList.remove('hidden'); } else { $('fabAdd').classList.add('hidden'); } }
+      updateFAB();
+      window.addEventListener('resize', updateFAB);
     });
   </script>
 </body>
