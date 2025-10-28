@@ -3,12 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NSE Portfolio — Local PIN Login</title>
+  <title>NSE Portfolio — Live Prices (AllOrigins)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .glass { background: rgba(255,255,255,0.75); backdrop-filter: blur(6px); }
+    .glass { background: rgba(255,255,255,0.8); backdrop-filter: blur(6px); }
     .muted { color: rgba(17,24,39,0.6); }
     .small { font-size: 0.85rem; }
+    .flash-up { animation: flashUp 1s; }
+    .flash-down { animation: flashDown 1s; }
+    @keyframes flashUp { 0% { background: rgba(16,185,129,0.15);} 100% { background: transparent; } }
+    @keyframes flashDown { 0% { background: rgba(239,68,68,0.12);} 100% { background: transparent; } }
     input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   </style>
 </head>
@@ -65,7 +69,7 @@
             <input id="fileInput" type="file" accept="application/json" class="hidden" />
 
             <div class="mt-6 text-xs muted">
-              <strong>Note:</strong> Live prices come from Google Finance. The app first attempts a direct fetch — if blocked by CORS the app uses a safe proxy fallback.
+              <strong>Note:</strong> Live prices come from Google Finance via a free proxy (AllOrigins). Auto-refresh every 5 minutes.
             </div>
           </div>
         </div>
@@ -137,13 +141,17 @@
 
   <script>
     // ---------- Config ----------
-    const PROXY_FALLBACK = 'https://api.allorigins.win/raw?url='; // public proxy for CORS fallback
-    const USER_KEY = 'nse_app_users_v1'; // stores {username: base64(pin)}
+    const PROXY = 'https://api.allorigins.win/raw?url='; // AllOrigins free proxy
+    const USER_KEY = 'nse_app_users_v1';
     const STORAGE_PREFIX = 'nse_portfolio_user_';
+    const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
 
     // ---------- Helpers ----------
     const $ = id => document.getElementById(id);
-    const format = n => (Number.isFinite(n) ? n.toFixed(2) : '-');
+    const formatNum = n => {
+      if(!Number.isFinite(n)) return '-';
+      return '₹' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    };
 
     function saveUsers(obj){ localStorage.setItem(USER_KEY, JSON.stringify(obj)); }
     function loadUsers(){ return JSON.parse(localStorage.getItem(USER_KEY) || '{}'); }
@@ -151,40 +159,32 @@
     function savePortfolioForUser(username, portfolio){ localStorage.setItem(STORAGE_PREFIX + username, JSON.stringify(portfolio)); }
     function loadPortfolioForUser(username){ try{ return JSON.parse(localStorage.getItem(STORAGE_PREFIX + username) || '[]'); } catch(e){ return []; } }
 
-    // ---------- Google Finance fetch ----------
-    async function fetchGoogleDirect(symbol){
+    // ---------- Google Finance fetch via AllOrigins ----------
+    async function fetchPriceFromGoogle(symbol){
       try{
-        const url = `https://www.google.com/finance/quote/${encodeURIComponent(symbol)}:NSE`;
+        // use AllOrigins to avoid CORS when hosted on GH Pages
+        const url = PROXY + encodeURIComponent(`https://www.google.com/finance/quote/${symbol}:NSE`);
         const res = await fetch(url);
         if(!res.ok) throw new Error('network');
         const html = await res.text();
-        const m = html.match(/<div[^>]*class="YMlKec fxKbKc"[^>]*>([^<]+)<\/div>/);
-        if(m && m[1]) return parseFloat(m[1].replace(/[^0-9.]/g, ''));
+        // match price like ₹2,345.60 or 2,345.60 (sometimes currency sign present)
+        const m = html.match(/class="YMlKec fxKbKc"[^>]*>([^<]+)</);
+        if(m && m[1]){
+          const raw = m[1].replace(/[^0-9.,]/g, '').replace(/,/g,'');
+          const v = parseFloat(raw);
+          if(Number.isFinite(v)) return v;
+        }
         return null;
-      }catch(e){ console.warn('direct fail', e); return null; }
-    }
-
-    async function fetchGooglePrice(symbol){
-      let p = await fetchGoogleDirect(symbol);
-      if(p) return p;
-      // fallback
-      try{
-        const url = PROXY_FALLBACK + encodeURIComponent(`https://www.google.com/finance/quote/${symbol}:NSE`);
-        const res = await fetch(url);
-        if(!res.ok) throw new Error('proxy');
-        const html = await res.text();
-        const m = html.match(/<div[^>]*class="YMlKec fxKbKc"[^>]*>([^<]+)<\/div>/);
-        if(m && m[1]) return parseFloat(m[1].replace(/[^0-9.]/g, ''));
-        return null;
-      }catch(e){ console.warn('proxy fail', e); return null; }
+      }catch(err){ console.warn('fetchPrice error', err); return null; }
     }
 
     // ---------- App state ----------
     let currentUser = null;
     let portfolio = [];
     let editingIndex = null;
+    let autoRefreshTimer = null;
 
-    // ---------- UI actions ----------
+    // ---------- UI ----------
     function showAuth(){ $('authView').classList.remove('hidden'); $('userPanel').classList.add('hidden'); $('portfolioCard').classList.add('hidden'); }
     function showUserPanel(){ $('authView').classList.add('hidden'); $('userPanel').classList.remove('hidden'); $('portfolioCard').classList.remove('hidden'); }
 
@@ -199,10 +199,10 @@
         tr.innerHTML = `
           <td class="py-2 font-medium">${it.symbol}</td>
           <td class="py-2">${it.qty}</td>
-          <td class="py-2">${format(it.buy)}</td>
-          <td class="py-2">${format(live)}</td>
-          <td class="py-2">${format(invRow)}</td>
-          <td class="py-2">${format(curRow)}</td>
+          <td class="py-2">${formatNum(it.buy)}</td>
+          <td class="py-2" id="live-${idx}">${formatNum(live)}</td>
+          <td class="py-2">${formatNum(invRow)}</td>
+          <td class="py-2">${formatNum(curRow)}</td>
           <td class="py-2">${plPerc.toFixed(2)}%</td>
           <td class="py-2">
             <button data-i="${idx}" class="px-2 py-1 rounded bg-white border mr-1 fetchBtn">Refresh</button>
@@ -212,25 +212,26 @@
         `;
         tbody.appendChild(tr);
       });
-      $('totInvested').textContent = format(invested);
-      $('totCurrent').textContent = format(current);
+      $('totInvested').textContent = formatNum(invested);
+      $('totCurrent').textContent = formatNum(current);
       const totPL = invested ? ((current - invested)/invested*100) : 0;
       $('totPL').textContent = totPL.toFixed(2) + '%';
 
       // wire buttons
       document.querySelectorAll('.delBtn').forEach(b => b.onclick = e => { const i = +e.target.dataset.i; portfolio.splice(i,1); savePortfolioForUser(currentUser, portfolio); renderTable(); });
       document.querySelectorAll('.editBtn').forEach(b => b.onclick = e => { openEdit(+e.target.dataset.i); });
-      document.querySelectorAll('.fetchBtn').forEach(b => b.onclick = async e => { const i = +e.target.dataset.i; const s = portfolio[i].symbol; const p = await fetchGooglePrice(s); if(p){ portfolio[i].live = p; savePortfolioForUser(currentUser, portfolio); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); } else alert('Price fetch failed for ' + s); });
+      document.querySelectorAll('.fetchBtn').forEach(b => b.onclick = async e => { const i = +e.target.dataset.i; const s = portfolio[i].symbol; const old = portfolio[i].live || portfolio[i].buy; const p = await fetchPriceFromGoogle(s); if(p !== null){ portfolio[i].live = p; savePortfolioForUser(currentUser, portfolio); flashPrice(i, old, p); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); } else alert('Price fetch failed for ' + s); });
     }
 
-    async function loadAndFetchAll(){ portfolio = loadPortfolioForUser(currentUser) || []; renderTable(); for(let i=0;i<portfolio.length;i++){ try{ const p = await fetchGooglePrice(portfolio[i].symbol); if(p) portfolio[i].live = p; } catch(e){ console.warn(e); } } savePortfolioForUser(currentUser, portfolio); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); }
+    function flashPrice(idx, oldPrice, newPrice){ const el = document.getElementById('live-' + idx); if(!el) return; if(newPrice > oldPrice) { el.classList.remove('flash-down'); void el.offsetWidth; el.classList.add('flash-up'); } else if(newPrice < oldPrice){ el.classList.remove('flash-up'); void el.offsetWidth; el.classList.add('flash-down'); } setTimeout(()=>{ el.classList.remove('flash-up'); el.classList.remove('flash-down'); }, 1200); }
+
+    async function loadAndFetchAll(){ portfolio = loadPortfolioForUser(currentUser) || []; renderTable(); for(let i=0;i<portfolio.length;i++){ try{ const old = portfolio[i].live || portfolio[i].buy; const p = await fetchPriceFromGoogle(portfolio[i].symbol); if(p !== null){ portfolio[i].live = p; flashPrice(i, old, p); } } catch(e){ console.warn(e); } } savePortfolioForUser(currentUser, portfolio); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); }
 
     function openAdd(){ editingIndex = null; $('modalTitle').textContent = 'Add Stock'; $('mSymbol').value=''; $('mQty').value=1; $('mBuy').value=''; $('modalWrap').classList.remove('hidden'); }
     function openEdit(i){ editingIndex = i; const it = portfolio[i]; $('modalTitle').textContent = 'Edit Stock'; $('mSymbol').value = it.symbol; $('mQty').value = it.qty; $('mBuy').value = it.buy; $('modalWrap').classList.remove('hidden'); }
 
-    // ---------- Event wiring ----------
+    // ---------- Events & init ----------
     document.addEventListener('DOMContentLoaded', () => {
-      // elements
       const usernameEl = $('username'); const pinEl = $('pin');
 
       // Register
@@ -240,7 +241,7 @@
         if(pin.length < 4) { $('authMsg').textContent = 'PIN must be 4 digits'; return; }
         const users = loadUsers();
         if(users[u]){ $('authMsg').textContent = 'Username exists. Choose a different name or login.'; return; }
-        users[u] = btoa(pin); saveUsers(users); $('authMsg').style.color = 'green'; $('authMsg').textContent = 'Registered. Now press Login.'; setTimeout(()=>$('authMsg').textContent='','2000');
+        users[u] = btoa(pin); saveUsers(users); $('authMsg').style.color = 'green'; $('authMsg').textContent = 'Registered. Now press Login.'; setTimeout(()=>{$('authMsg').textContent='';},2000);
       };
 
       // Login
@@ -251,13 +252,16 @@
         const users = loadUsers();
         if(users[u] && users[u] === btoa(pin)){
           currentUser = u; $('displayUser').textContent = u; $('statusMsg').textContent = 'Loading...'; showUserPanel(); loadAndFetchAll();
+          // start auto refresh
+          if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+          autoRefreshTimer = setInterval(()=>{ loadAndFetchAll(); }, AUTO_REFRESH_MS);
         } else {
           $('authMsg').textContent = 'Invalid username or PIN.';
         }
       };
 
       // Logout
-      $('btnLogout').onclick = () => { currentUser = null; portfolio = []; $('authMsg').textContent = ''; showAuth(); };
+      $('btnLogout').onclick = () => { currentUser = null; portfolio = []; if(autoRefreshTimer) clearInterval(autoRefreshTimer); showAuth(); };
 
       // Add / Modal
       $('btnAdd').onclick = openAdd;
@@ -267,7 +271,7 @@
         if(!s || !(q>0) || !(b>0)){ alert('Enter valid symbol, qty and buy price'); return; }
         const entry = { symbol: s, qty: q, buy: b };
         if(editingIndex===null) portfolio.push(entry); else portfolio[editingIndex] = Object.assign(portfolio[editingIndex], entry);
-        savePortfolioForUser(currentUser, portfolio); $('modalWrap').classList.add('hidden'); renderTable(); const idx = (editingIndex===null)?portfolio.length-1:editingIndex; const p = await fetchGooglePrice(portfolio[idx].symbol); if(p){ portfolio[idx].live = p; savePortfolioForUser(currentUser, portfolio); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); }
+        savePortfolioForUser(currentUser, portfolio); $('modalWrap').classList.add('hidden'); renderTable(); const idx = (editingIndex===null)?portfolio.length-1:editingIndex; const p = await fetchPriceFromGoogle(portfolio[idx].symbol); if(p !== null){ portfolio[idx].live = p; savePortfolioForUser(currentUser, portfolio); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); }
       };
 
       // Refresh all
