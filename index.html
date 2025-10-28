@@ -3,72 +3,53 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NSE Portfolio — Your Portfolio</title>
-  <meta name="description" content="Lightweight client-side NSE portfolio tracker with PIN login, live prices and import/export." />
+  <title>NSE Portfolio — Your Portfolio (GitHub Sync)</title>
+  <meta name="description" content="Client-side NSE portfolio tracker with optional GitHub Gist sync." />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Pastel glassmorphic theme */
     :root{
-      --bg1: #eef9f6;
-      --bg2: #f1f8ff;
-      --card: rgba(255,255,255,0.9);
+      --bg1: #eef9f6; --bg2: #f1f8ff; --card: rgba(255,255,255,0.94);
       --muted: rgba(17,24,39,0.6);
-      --accent-1: rgba(199,236,234,0.9);
-      --accent-2: rgba(224,235,255,0.9);
-      --accent-3: rgba(243,238,255,0.9);
+      --accent-1: rgba(199,236,234,0.95);
+      --accent-2: rgba(224,235,255,0.95);
+      --accent-3: rgba(243,238,255,0.95);
     }
     .dark{
-      --bg1: #071020;
-      --bg2: #08111a;
-      --card: rgba(10,16,22,0.85);
-      --muted: rgba(203,213,225,0.7);
-      --accent-1: rgba(18,55,46,0.35);
-      --accent-2: rgba(18,42,70,0.35);
-      --accent-3: rgba(39,24,54,0.35);
+      --bg1:#071020; --bg2:#08111a; --card: rgba(10,16,22,0.86); --muted: rgba(203,213,225,0.7);
+      --accent-1: rgba(18,55,46,0.18); --accent-2: rgba(18,42,70,0.14); --accent-3: rgba(39,24,54,0.12);
     }
-    body{
-      background: linear-gradient(135deg,var(--bg1),var(--bg2));
-      min-height:100vh;
-      -webkit-font-smoothing:antialiased;
-      font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
-    }
-    .glass{background:var(--card);backdrop-filter: blur(6px); border-radius:16px;}
+    body{background:linear-gradient(135deg,var(--bg1),var(--bg2));min-height:100vh;font-family:Inter,system-ui,Roboto,Arial;}
+    .glass{background:var(--card);backdrop-filter:blur(6px);border-radius:12px}
     .muted{color:var(--muted)}
-    /* table styling */
-    table { border-collapse: collapse; width:100%; font-size:0.95rem; }
-    th, td { padding:10px 8px; text-align:left; border-bottom:1px solid rgba(0,0,0,0.06); }
-    .dark th, .dark td { border-bottom:1px solid rgba(255,255,255,0.04); }
-    thead th { background: linear-gradient(90deg,var(--accent-2),var(--accent-3)); position:sticky; top:0; z-index:2; }
-    tbody tr:nth-child(odd){ background: linear-gradient(90deg, rgba(255,255,255,0.015), rgba(255,255,255,0)); }
-    .dark tbody tr:nth-child(odd){ background: linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); }
-    tfoot td { font-weight:700; background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); }
-    .profit { color: #0f9d58; font-weight:600; }
-    .loss { color: #e53935; font-weight:600; }
-    .fab { position: fixed; right: 18px; bottom: 18px; z-index:80; width:56px; height:56px; border-radius:999px; display:flex;align-items:center;justify-content:center; box-shadow: 0 10px 30px rgba(2,6,23,0.12); }
-    /* responsive tweaks */
-    @media (min-width:768px){
-      .sticky-aside{ position:sticky; top:28px; }
-    }
-    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    table{border-collapse:collapse;width:100%;font-size:0.95rem}
+    th,td{padding:10px 8px;text-align:left;border-bottom:1px solid rgba(0,0,0,0.06)}
+    .dark th,.dark td{border-bottom:1px solid rgba(255,255,255,0.04)}
+    thead th{background:linear-gradient(90deg,var(--accent-2),var(--accent-3));position:sticky;top:0;z-index:2}
+    tbody tr:nth-child(odd){background:linear-gradient(90deg,rgba(255,255,255,0.015),rgba(255,255,255,0))}
+    .dark tbody tr:nth-child(odd){background:linear-gradient(90deg,rgba(255,255,255,0.01),rgba(255,255,255,0))}
+    tfoot td{font-weight:700;background:linear-gradient(90deg,var(--accent-1),var(--accent-2))}
+    .profit{color:#0f9d58;font-weight:600}
+    .loss{color:#e53935;font-weight:600}
+    .fab{position:fixed;right:18px;bottom:18px;z-index:80;width:56px;height:56px;border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(2,6,23,0.12)}
+    @media(min-width:768px){.sticky-aside{position:sticky;top:28px}}
+    .small{font-size:0.85rem}
+    .codebox{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(0,0,0,0.04);padding:8px;border-radius:6px}
   </style>
 </head>
 <body class="p-4 sm:p-6">
   <div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-6">
-    <!-- Left panel -->
     <aside class="md:w-4/12">
       <div id="authCard" class="glass p-5 shadow sticky-aside">
         <h1 class="text-xl font-semibold">Your Portfolio</h1>
-        <p class="muted text-sm mt-1">Light & colorful — client-side only. Sign in with username + 4-digit PIN.</p>
+        <p class="muted text-sm mt-1">Client-side tracker. Optional GitHub Gist sync for cross-device access.</p>
 
-        <!-- login -->
         <form id="authForm" class="mt-4 space-y-3" onsubmit="return false;">
           <label class="block text-sm">Username
-            <input id="username" class="mt-1 w-full rounded-md border border-gray-200 p-2" placeholder="yourname" autocomplete="username" aria-label="username" />
+            <input id="username" class="mt-1 w-full rounded-md border border-gray-200 p-2" placeholder="yourname" autocomplete="username" />
           </label>
           <label class="block text-sm">4-digit PIN
-            <input id="pin" type="password" inputmode="numeric" maxlength="4" class="mt-1 w-full rounded-md border border-gray-200 p-2" placeholder="1234" aria-label="pin" />
+            <input id="pin" type="password" inputmode="numeric" maxlength="4" class="mt-1 w-full rounded-md border border-gray-200 p-2" placeholder="1234" />
           </label>
-
           <div class="flex gap-2">
             <button id="btnRegister" type="button" class="flex-1 py-2 rounded-md bg-emerald-500 text-white">Register</button>
             <button id="btnLogin" type="button" class="flex-1 py-2 rounded-md border">Login</button>
@@ -76,7 +57,6 @@
           <div id="authMsg" class="text-sm text-red-600"></div>
         </form>
 
-        <!-- user panel -->
         <div id="userPanel" class="hidden mt-4">
           <div class="flex items-center justify-between">
             <div>
@@ -99,13 +79,42 @@
             </div>
           </div>
 
+          <!-- Cloud Sync Panel -->
+          <div class="mt-4 p-3 border rounded-md">
+            <div class="flex items-center justify-between">
+              <div class="small font-medium">Cloud Sync (GitHub Gist)</div>
+              <div class="small muted">private & free</div>
+            </div>
+            <div class="mt-2 space-y-2 small">
+              <div>
+                <label class="block text-xs">GitHub Username</label>
+                <input id="ghUser" class="mt-1 w-full rounded-md border p-2" placeholder="your-github-username" />
+              </div>
+              <div>
+                <label class="block text-xs">Personal Access Token (gist scope)</label>
+                <input id="ghToken" class="mt-1 w-full rounded-md border p-2" placeholder="paste token (kept locally)" />
+              </div>
+              <div class="flex gap-2">
+                <button id="btnConnect" class="flex-1 py-1 rounded-md bg-green-500 text-white small">Connect</button>
+                <button id="btnSync" class="flex-1 py-1 rounded-md border small">Sync Now</button>
+              </div>
+              <div class="flex items-center gap-2 mt-1">
+                <input id="autoSync" type="checkbox" />
+                <label for="autoSync" class="small muted">Auto-sync on change</label>
+              </div>
+              <div id="syncMsg" class="small text-xs muted mt-1"></div>
+              <div class="mt-2 text-xs muted">
+                Need a token? Create one at <span class="codebox">https://github.com/settings/tokens → Generate new token (classic) → select <strong>gist</strong></span>
+              </div>
+            </div>
+          </div>
+
           <input id="fileInput" type="file" accept="application/json" class="hidden" />
-          <div class="mt-3 text-xs muted">Prices via Google Finance (AllOrigins proxy). Auto-refresh every 5 minutes.</div>
+          <div class="mt-3 text-xs muted">Prices via Google Finance (AllOrigins). Auto-refresh every 5 minutes.</div>
         </div>
       </div>
     </aside>
 
-    <!-- Right panel -->
     <main class="md:w-8/12">
       <div id="portfolioCard" class="glass p-5 shadow hidden">
         <div class="flex items-center justify-between mb-3">
@@ -117,15 +126,8 @@
           <table id="portfolioTable" class="min-w-[720px]">
             <thead>
               <tr>
-                <th>Stock</th>
-                <th>Qty</th>
-                <th>Buy ₹</th>
-                <th>Live ₹</th>
-                <th>Invested ₹</th>
-                <th>Current ₹</th>
-                <th>P&L ₹</th>
-                <th>P/L %</th>
-                <th>Actions</th>
+                <th>Stock</th><th>Qty</th><th>Buy ₹</th><th>Live ₹</th><th>Invested ₹</th>
+                <th>Current ₹</th><th>P&L ₹</th><th>P/L %</th><th>Actions</th>
               </tr>
             </thead>
             <tbody id="tblBody"></tbody>
@@ -142,15 +144,14 @@
           </table>
         </div>
 
-        <div class="mt-3 text-xs muted">Tip: Use Import/Export to backup your portfolio file.</div>
+        <div class="mt-3 text-xs muted">Tip: Use Import/Export to backup your portfolio file. Use Cloud Sync for cross-device.</div>
       </div>
     </main>
   </div>
 
-  <!-- FAB for mobile -->
   <button id="fabAdd" class="fab bg-sky-500 text-white hidden" title="Add stock" aria-label="Add stock">+</button>
 
-  <!-- Add/Edit Modal -->
+  <!-- Modals -->
   <div id="modalWrap" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
     <div class="bg-white dark:bg-gray-800 rounded-xl p-5 max-w-md w-full">
       <h3 id="modalTitle" class="font-semibold mb-2">Add stock</h3>
@@ -177,7 +178,6 @@
     </div>
   </div>
 
-  <!-- Change PIN Modal -->
   <div id="pinModal" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
     <div class="bg-white dark:bg-gray-800 rounded-xl p-5 max-w-md w-full">
       <h3 class="font-semibold mb-2">Change PIN</h3>
@@ -200,11 +200,13 @@
   </div>
 
 <script>
-/* App script: PIN auth + portfolio + AllOrigins price fetch + responsive UI */
+/* NSE Portfolio Pro v5 — GitHub Gist Sync Edition */
+
 const PROXY = 'https://api.allorigins.win/raw?url=';
-const USER_KEY = 'nse_app_users_v4';
-const STORAGE_PREFIX = 'nse_portfolio_user_v4_';
-const THEME_KEY = 'nse_theme_v4';
+const USER_KEY = 'nse_app_users_v5';
+const STORAGE_PREFIX = 'nse_portfolio_user_v5_';
+const THEME_KEY = 'nse_theme_v5';
+const GIST_META_KEY = 'nse_gist_meta_v5';
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
 const $ = id => document.getElementById(id);
@@ -213,6 +215,8 @@ function saveUsers(obj){ localStorage.setItem(USER_KEY, JSON.stringify(obj)); }
 function loadUsers(){ return JSON.parse(localStorage.getItem(USER_KEY) || '{}'); }
 function savePortfolioForUser(username, portfolio){ localStorage.setItem(STORAGE_PREFIX + username, JSON.stringify(portfolio)); }
 function loadPortfolioForUser(username){ try{return JSON.parse(localStorage.getItem(STORAGE_PREFIX + username) || '[]')}catch(e){return []} }
+function saveGistMeta(meta){ localStorage.setItem(GIST_META_KEY, JSON.stringify(meta)); }
+function loadGistMeta(){ try{return JSON.parse(localStorage.getItem(GIST_META_KEY) || '{}')}catch(e){return {} } }
 
 async function fetchPrice(symbol){
   try{
@@ -226,7 +230,6 @@ async function fetchPrice(symbol){
   }catch(e){ console.warn('fetch error', e); return null; }
 }
 
-// state
 let currentUser = null, portfolio = [], editIndex = null, autoTimer = null;
 
 function fmt(n){ return Number.isFinite(n) ? '₹' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '-'; }
@@ -234,7 +237,7 @@ function fmt(n){ return Number.isFinite(n) ? '₹' + n.toFixed(2).replace(/\B(?=
 function applyTheme(theme){ if(theme==='dark'){ document.documentElement.classList.add('dark'); $('themeToggle').textContent='☀️'; } else { document.documentElement.classList.remove('dark'); $('themeToggle').textContent='🌙'; } localStorage.setItem(THEME_KEY, theme); }
 
 function renderTable(){
-  const tbody = $('tblBody'); tbody.innerHTML=''; let invested=0, current=0, plrs=0;
+  const tbody = $('tblBody'); tbody.innerHTML=''; let invested=0,current=0,plrs=0;
   portfolio.forEach((it, idx) => {
     const live = it.live || it.buy || 0;
     const investedRow = it.qty * it.buy;
@@ -260,20 +263,18 @@ function renderTable(){
       </td>`;
     tbody.appendChild(tr);
   });
-  // totals at bottom
   $('totInvested').textContent = fmt(invested);
   $('totCurrent').textContent = fmt(current);
   $('totPLRs').textContent = fmt(plrs);
   const totPerc = invested ? ((current - invested)/invested*100) : 0;
   $('totPLPerc').textContent = totPerc.toFixed(2) + '%';
 
-  // wire buttons
-  document.querySelectorAll('.delBtn').forEach(b => b.onclick = e => { const i = +e.target.dataset.i; portfolio.splice(i,1); savePortfolioForUser(currentUser, portfolio); renderTable(); });
+  document.querySelectorAll('.delBtn').forEach(b => b.onclick = e => { const i = +e.target.dataset.i; portfolio.splice(i,1); savePortfolioForUser(currentUser, portfolio); renderTable(); if($('autoSync').checked) syncToGist(); });
   document.querySelectorAll('.editBtn').forEach(b => b.onclick = e => { openEdit(+e.target.dataset.i); });
   document.querySelectorAll('.fetchBtn').forEach(b => b.onclick = async e => {
     const i = +e.target.dataset.i; const s = portfolio[i].symbol; const old = portfolio[i].live || portfolio[i].buy;
     const p = await fetchPrice(s);
-    if(p !== null){ portfolio[i].live = p; savePortfolioForUser(currentUser, portfolio); flashPrice(i, old, p); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); }
+    if(p !== null){ portfolio[i].live = p; savePortfolioForUser(currentUser, portfolio); flashPrice(i, old, p); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); if($('autoSync').checked) syncToGist(); }
     else alert('Price fetch failed for ' + s);
   });
 }
@@ -294,43 +295,93 @@ async function loadAndFetchAll(){
     }catch(e){ console.warn(e); }
   }
   savePortfolioForUser(currentUser, portfolio); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString();
+  if($('autoSync').checked) syncToGist();
 }
 
 function openAdd(){ editIndex = null; $('modalTitle').textContent = 'Add stock'; $('mSymbol').value=''; $('mQty').value=1; $('mBuy').value=''; $('modalWrap').classList.remove('hidden'); }
 function openEdit(i){ editIndex = i; const it = portfolio[i]; $('modalTitle').textContent = 'Edit stock'; $('mSymbol').value = it.symbol; $('mQty').value = it.qty; $('mBuy').value = it.buy; $('modalWrap').classList.remove('hidden'); }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // init theme
-  const savedTheme = localStorage.getItem(THEME_KEY) || 'light'; applyTheme(savedTheme);
+/* GitHub Gist helpers */
+async function createGist(username, token, filename, content){
+  const body = { description: "NSE Portfolio (private) - created by NSE Portfolio Pro", public: false, files: { [filename]: { content } } };
+  const res = await fetch('https://api.github.com/gists', { method: 'POST', headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if(!res.ok) throw new Error('Gist create failed: ' + res.status);
+  return await res.json();
+}
+async function updateGist(gistId, token, filename, content){
+  const body = { files: { [filename]: { content } } };
+  const res = await fetch('https://api.github.com/gists/' + gistId, { method: 'PATCH', headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if(!res.ok) throw new Error('Gist update failed: ' + res.status);
+  return await res.json();
+}
+async function fetchGist(gistId, token){
+  const headers = token ? { 'Authorization': 'token ' + token } : {};
+  const res = await fetch('https://api.github.com/gists/' + gistId, { headers });
+  if(!res.ok) throw new Error('Gist fetch failed: ' + res.status);
+  return await res.json();
+}
 
+async function connectGitHub(){
+  const user = $('ghUser').value.trim(); const token = $('ghToken').value.trim();
+  if(!user || !token){ $('syncMsg').textContent = 'Enter username and token'; return; }
+  const meta = loadGistMeta() || {}; meta.username = user; meta.tokenStored = true;
+  localStorage.setItem('nse_gh_token_v5', token);
+  saveGistMeta(meta);
+  $('syncMsg').textContent = 'Connected (token saved locally).';
+}
+
+async function syncToGist(){
+  const meta = loadGistMeta() || {}; const token = localStorage.getItem('nse_gh_token_v5'); const username = $('ghUser').value.trim() || meta.username;
+  if(!username || !token){ $('syncMsg').textContent = 'Connect GitHub first.'; return; }
+  const filename = `portfolio_${username}.json`; const content = JSON.stringify(loadPortfolioForUser(currentUser) || [], null, 2);
+  try{
+    if(meta.gistId){ await updateGist(meta.gistId, token, filename, content); $('syncMsg').textContent = 'Synced to Gist (updated).'; }
+    else { const res = await createGist(username, token, filename, content); meta.gistId = res.id; meta.filename = filename; meta.username = username; saveGistMeta(meta); $('syncMsg').textContent = 'Synced to Gist (created).'; }
+  }catch(err){ console.error(err); $('syncMsg').textContent = 'Sync failed: ' + err.message; }
+}
+
+async function loadFromGist(){
+  const meta = loadGistMeta() || {}; const token = localStorage.getItem('nse_gh_token_v5');
+  if(!meta.gistId){ $('syncMsg').textContent = 'No Gist linked yet. Use Sync Now to create one.'; return; }
+  try{
+    const res = await fetchGist(meta.gistId, token);
+    let fileContent = null;
+    if(meta.filename && res.files[meta.filename]) fileContent = res.files[meta.filename].content;
+    else { for(const f in res.files){ if(res.files[f].language === 'JSON' || f.endsWith('.json')){ fileContent = res.files[f].content; meta.filename = f; break; } } }
+    if(!fileContent){ $('syncMsg').textContent = 'No JSON file found in Gist.'; return; }
+    const data = JSON.parse(fileContent);
+    if(Array.isArray(data)){ portfolio = data; savePortfolioForUser(currentUser, portfolio); renderTable(); $('syncMsg').textContent = 'Loaded portfolio from Gist.'; } else $('syncMsg').textContent = 'Gist JSON is invalid.';
+  }catch(err){ console.error(err); $('syncMsg').textContent = 'Load failed: ' + err.message; }
+}
+
+/* Events and UI wiring */
+document.addEventListener('DOMContentLoaded', () => {
   const usernameEl = $('username'), pinEl = $('pin');
+  const pref = localStorage.getItem(THEME_KEY) || 'light'; applyTheme(pref);
 
   $('btnRegister').onclick = () => {
     const u = usernameEl.value.trim(); const pin = pinEl.value.trim();
     if(!u || !pin){ $('authMsg').textContent = 'Enter username and 4-digit PIN'; return; }
     if(pin.length < 4){ $('authMsg').textContent = 'PIN must be 4 digits'; return; }
     const users = loadUsers(); if(users[u]){ $('authMsg').textContent = 'Username exists'; return; }
-    users[u] = btoa(pin); saveUsers(users); $('authMsg').style.color='green'; $('authMsg').textContent='Registered — press Login'; setTimeout(()=>$('authMsg').textContent='',2000);
+    users[u] = btoa(pin); saveUsers(users); $('authMsg').style.color='green'; $('authMsg').textContent='Registered — press Login';
   };
 
   $('btnLogin').onclick = () => {
     const u = usernameEl.value.trim(); const pin = pinEl.value.trim();
     $('authMsg').textContent = '';
-    if(!u || !pin){ $('authMsg').textContent = 'Enter username and PIN'; return; }
     const users = loadUsers();
+    if(!u || !pin){ $('authMsg').textContent = 'Enter username and PIN'; return; }
     if(users[u] && users[u] === btoa(pin)){
       currentUser = u; $('displayUser').textContent = u; $('authForm').classList.add('hidden'); $('userPanel').classList.remove('hidden'); $('portfolioCard').classList.remove('hidden');
-      loadAndFetchAll();
-      if(autoTimer) clearInterval(autoTimer);
-      autoTimer = setInterval(()=>loadAndFetchAll(), AUTO_REFRESH_MS);
-    } else {
-      $('authMsg').textContent = 'Invalid username or PIN';
-    }
+      portfolio = loadPortfolioForUser(currentUser) || []; renderTable(); loadAndFetchAll();
+      if(autoTimer) clearInterval(autoTimer); autoTimer = setInterval(()=>loadAndFetchAll(), AUTO_REFRESH_MS);
+      const meta = loadGistMeta() || {}; if(meta.username) $('ghUser').value = meta.username;
+    } else { $('authMsg').textContent = 'Invalid username or PIN'; }
   };
 
   $('btnLogout').onclick = () => { currentUser = null; portfolio = []; if(autoTimer) clearInterval(autoTimer); $('authForm').classList.remove('hidden'); $('userPanel').classList.add('hidden'); $('portfolioCard').classList.add('hidden'); };
 
-  // settings -> change PIN
   $('btnSettings').onclick = () => { if(!currentUser){ alert('Login first'); return; } $('pinModal').classList.remove('hidden'); $('curPin').value=''; $('newPin').value=''; $('confirmPin').value=''; };
   $('pinCancel').onclick = () => $('pinModal').classList.add('hidden');
   $('pinSave').onclick = () => {
@@ -343,12 +394,9 @@ document.addEventListener('DOMContentLoaded', () => {
     users[currentUser] = btoa(nw); saveUsers(users); alert('PIN changed'); $('pinModal').classList.add('hidden');
   };
 
-  // theme toggle
   $('themeToggle').onclick = () => { const now = document.documentElement.classList.contains('dark')? 'light' : 'dark'; applyTheme(now); };
 
-  // add/edit handlers
-  $('btnAdd').onclick = openAdd;
-  $('fabAdd').onclick = openAdd;
+  $('btnAdd').onclick = openAdd; $('fabAdd').onclick = openAdd;
   $('modalCancel').onclick = () => $('modalWrap').classList.add('hidden');
   $('modalSave').onclick = async () => {
     const s = $('mSymbol').value.trim().toUpperCase(); const q = parseFloat($('mQty').value); const b = parseFloat($('mBuy').value);
@@ -360,12 +408,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const idx = (editIndex===null)? portfolio.length-1 : editIndex;
     const p = await fetchPrice(portfolio[idx].symbol);
     if(p!==null){ portfolio[idx].live = p; savePortfolioForUser(currentUser, portfolio); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); }
+    if($('autoSync').checked) syncToGist();
   };
 
-  // refresh all
   $('btnFetchAll').onclick = async () => { $('statusMsg').textContent = 'Refreshing...'; await loadAndFetchAll(); $('statusMsg').textContent = 'Prices updated'; };
 
-  // import/export
   $('btnExport').onclick = () => {
     if(!currentUser){ alert('Login first'); return; }
     const data = loadPortfolioForUser(currentUser)||[]; const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
@@ -374,16 +421,42 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btnImport').onclick = () => $('fileInput').click();
   $('fileInput').onchange = e => {
     const f = e.target.files[0]; if(!f) return; const r = new FileReader();
-    r.onload = () => { try{ const d = JSON.parse(r.result); if(Array.isArray(d)){ portfolio = d; savePortfolioForUser(currentUser, portfolio); renderTable(); alert('Imported'); } else alert('Invalid JSON'); } catch(err){ alert('Invalid JSON'); } };
+    r.onload = () => { try{ const d = JSON.parse(r.result); if(Array.isArray(d)){ portfolio = d; savePortfolioForUser(currentUser, portfolio); renderTable(); alert('Imported'); if($('autoSync').checked) syncToGist(); } else alert('Invalid JSON'); } catch(err){ alert('Invalid JSON'); } };
     r.readAsText(f);
   };
 
-  // prevent submit
-  $('authForm').addEventListener('submit', e => e.preventDefault());
+  $('btnConnect').onclick = () => connectGitHub();
+  $('btnSync').onclick = async () => {
+    try{
+      const meta = loadGistMeta() || {};
+      if(!meta.gistId){
+        const user = $('ghUser').value.trim(); const token = $('ghToken').value.trim();
+        if(!user || !token){ $('syncMsg').textContent = 'Enter GitHub username & token'; return; }
+        const filename = `portfolio_${user}.json`;
+        const content = JSON.stringify(loadPortfolioForUser(currentUser) || [], null, 2);
+        const res = await createGist(user, token, filename, content);
+        meta.gistId = res.id; meta.filename = filename; meta.username = user;
+        saveGistMeta(meta); localStorage.setItem('nse_gh_token_v5', token); $('syncMsg').textContent = 'Gist created & synced.'; 
+      } else {
+        await syncToGist();
+      }
+    }catch(err){ console.error(err); $('syncMsg').textContent = 'Sync error: ' + err.message; }
+  };
 
-  // initial UI state, FAB logic and theme
-  const pref = localStorage.getItem(THEME_KEY) || 'light'; applyTheme(pref);
-  function updateFAB(){ if(window.innerWidth < 768){ $('fabAdd').classList.remove('hidden'); } else { $('fabAdd').classList.add('hidden'); } }
+  $('ghUser').addEventListener('change', () => {
+    const v = $('ghUser').value.trim();
+    if(v.startsWith('id:')){ const id = v.slice(3).trim(); const meta = loadGistMeta()||{}; meta.gistId = id; saveGistMeta(meta); $('syncMsg').textContent = 'Detected gist id. Use Sync Now or Load from Gist.'; }
+  });
+
+  $('btnSync').ondblclick = async () => {
+    const meta = loadGistMeta()||{};
+    if(!meta.gistId){ $('syncMsg').textContent = 'No gist linked yet.'; return; }
+    await loadFromGist();
+  };
+
+  document.getElementById('authForm').addEventListener('submit', e => e.preventDefault());
+
+  function updateFAB(){ if(window.innerWidth < 768) $('fabAdd').classList.remove('hidden'); else $('fabAdd').classList.add('hidden'); }
   updateFAB(); window.addEventListener('resize', updateFAB);
 });
 </script>
