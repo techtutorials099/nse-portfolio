@@ -1,86 +1,267 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NSE Portfolio — Local PIN Login</title>
+  <title>NSE Portfolio — PIN Login + Dark Mode</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .glass { background: rgba(255,255,255,0.75); backdrop-filter: blur(6px); }
-    .muted { color: rgba(17,24,39,0.6); }
-    .small { font-size: 0.85rem; }
-    table, th, td { border: 1px solid #ddd; }
-    th, td { padding: 6px; }
+    :root{--bg:#f8fafc;--card:#ffffff;--muted:rgba(17,24,39,0.6);}
+    .dark{--bg:#0b1220;--card:rgba(17,24,39,0.85);--muted:rgba(203,213,225,0.7);} 
+    body{background:linear-gradient(135deg,var(--bg),#e6f2ff);}
+    .glass{background:var(--card);backdrop-filter:blur(6px)}
+    .muted{color:var(--muted)}
+    table, th, td { border: 1px solid rgba(0,0,0,0.08); }
+    .dark table, .dark th, .dark td { border:1px solid rgba(255,255,255,0.06); }
     table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 8px; }
+    .icon-btn{width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px}
+    .flash-up{animation:flashUp 1s}@keyframes flashUp{0%{background:rgba(16,185,129,0.12)}100%{background:transparent}}
+    .flash-down{animation:flashDown 1s}@keyframes flashDown{0%{background:rgba(239,68,68,0.10)}100%{background:transparent}}
   </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-50 to-sky-50 flex items-center justify-center p-6">
+<body class="min-h-screen flex items-center justify-center p-6">
   <div class="w-full max-w-6xl">
     <div class="grid grid-cols-12 gap-6">
+
+      <!-- Left: Auth / Controls -->
       <div class="col-span-12 md:col-span-4">
         <div id="authCard" class="glass rounded-2xl p-6 shadow-lg">
+
+          <!-- Login View -->
           <div id="authView">
             <h2 class="text-2xl font-semibold mb-2">Welcome</h2>
             <p class="muted mb-4">Sign in with a username and 4-digit PIN (stored only in your browser).</p>
+
             <form id="authForm" class="space-y-3">
               <label class="block text-sm">Username
-                <input id="username" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2" placeholder="yourname" autocomplete="username" required />
+                <input id="username" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2 bg-transparent" placeholder="yourname" autocomplete="username" required />
               </label>
               <label class="block text-sm">4-digit PIN
-                <input id="pin" type="number" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2" placeholder="1234" required />
+                <input id="pin" type="number" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2 bg-transparent" placeholder="1234" required />
               </label>
+
               <div class="flex gap-2">
                 <button id="btnRegister" type="button" class="flex-1 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Register</button>
-                <button id="btnLogin" type="button" class="flex-1 py-2 rounded-lg border bg-white">Login</button>
+                <button id="btnLogin" type="button" class="flex-1 py-2 rounded-lg border bg-white dark:bg-gray-800">Login</button>
               </div>
+
               <div class="text-xs muted">If you are registering for the first time, press <strong>Register</strong>. PINs are stored locally using browser storage.</div>
             </form>
+
             <div id="authMsg" class="mt-3 text-sm text-red-600"></div>
           </div>
+
+          <!-- User Panel -->
           <div id="userPanel" class="hidden">
             <div class="flex items-center justify-between">
               <div>
                 <div id="displayUser" class="font-medium text-lg">—</div>
                 <div id="statusMsg" class="text-sm muted">Portfolio ready</div>
               </div>
-              <div class="flex gap-2">
-                <button id="btnChangePin" class="py-2 px-3 rounded-lg bg-yellow-400 text-black">Change PIN</button>
-                <button id="btnLogout" class="py-2 px-3 rounded-lg border bg-white">Logout</button>
+              <div class="flex items-center gap-2">
+                <button id="themeToggle" title="Toggle theme" class="icon-btn border hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Toggle theme">🌙</button>
+                <button id="btnSettings" title="Settings" class="icon-btn border hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Settings">⚙️</button>
+                <button id="btnLogout" class="py-2 px-3 rounded-lg border bg-white dark:bg-gray-800">Logout</button>
               </div>
             </div>
+
+            <div class="mt-4 space-y-2">
+              <button id="btnAdd" class="w-full py-2 rounded-lg bg-sky-600 text-white">Add stock</button>
+              <button id="btnFetchAll" class="w-full py-2 rounded-lg border bg-white dark:bg-gray-800">Refresh prices</button>
+              <div class="flex gap-2">
+                <button id="btnImport" class="flex-1 py-2 rounded-lg border bg-white dark:bg-gray-800">Import JSON</button>
+                <button id="btnExport" class="flex-1 py-2 rounded-lg border bg-white dark:bg-gray-800">Export</button>
+              </div>
+            </div>
+
+            <input id="fileInput" type="file" accept="application/json" class="hidden" />
+
+            <div class="mt-6 text-xs muted">
+              <strong>Note:</strong> Live prices come from Google Finance via a free proxy (AllOrigins). Auto-refresh every 5 minutes.
+            </div>
           </div>
+
         </div>
+      </div>
+
+      <!-- Right: Portfolio -->
+      <div class="col-span-12 md:col-span-8">
+        <div id="portfolioCard" class="glass rounded-2xl p-6 shadow-lg hidden">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold">Your Portfolio</h3>
+            <div class="flex items-center gap-3 text-sm muted">
+              <div>Updated: <span id="lastUpdated">-</span></div>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left table-auto">
+              <thead>
+                <tr class="text-sm text-slate-600 bg-slate-100 dark:bg-gray-800">
+                  <th>Stock</th>
+                  <th>Qty</th>
+                  <th>Buy</th>
+                  <th>Live</th>
+                  <th>Invested</th>
+                  <th>Current</th>
+                  <th>P/L%</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tblBody" class="text-sm"></tbody>
+              <tfoot class="text-sm font-medium bg-slate-50 dark:bg-gray-900">
+                <tr>
+                  <td colspan="4">Totals</td>
+                  <td id="totInvested">-</td>
+                  <td id="totCurrent">-</td>
+                  <td id="totPL">-</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="mt-4 text-xs muted">Tip: Use Import/Export to backup your portfolio file.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal Add / Edit -->
+  <div id="modalWrap" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-lg shadow-lg">
+      <h4 id="modalTitle" class="text-lg font-semibold mb-2">Add Stock</h4>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="col-span-2">Symbol (NSE)
+          <input id="mSymbol" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2 bg-transparent" placeholder="RELIANCE" />
+        </label>
+        <label>Quantity
+          <input id="mQty" type="number" min="1" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2 bg-transparent" value="1" />
+        </label>
+        <label>Buy Price
+          <input id="mBuy" type="number" step="0.01" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2 bg-transparent" />
+        </label>
+      </div>
+      <div class="mt-4 flex gap-2 justify-end">
+        <button id="modalCancel" class="px-4 py-2 rounded-lg border">Cancel</button>
+        <button id="modalSave" class="px-4 py-2 rounded-lg bg-sky-600 text-white">Save</button>
       </div>
     </div>
   </div>
+
+  <!-- Change PIN Modal -->
+  <div id="pinModal" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-lg">
+      <h4 class="text-lg font-semibold mb-2">Change PIN</h4>
+      <div class="space-y-3">
+        <label class="block text-sm">Current PIN
+          <input id="curPin" type="number" class="mt-1 w-full rounded-md p-2 bg-transparent" />
+        </label>
+        <label class="block text-sm">New 4-digit PIN
+          <input id="newPin" type="number" class="mt-1 w-full rounded-md p-2 bg-transparent" />
+        </label>
+        <label class="block text-sm">Confirm New PIN
+          <input id="confirmPin" type="number" class="mt-1 w-full rounded-md p-2 bg-transparent" />
+        </label>
+      </div>
+      <div class="mt-4 flex gap-2 justify-end">
+        <button id="pinCancel" class="px-4 py-2 rounded-lg border">Cancel</button>
+        <button id="pinSave" class="px-4 py-2 rounded-lg bg-yellow-400">Save PIN</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // config
+    const PROXY = 'https://api.allorigins.win/raw?url=';
     const USER_KEY = 'nse_app_users_v1';
+    const STORAGE_PREFIX = 'nse_portfolio_user_';
+    const THEME_KEY = 'nse_theme_v1';
+    const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
+    // helpers
+    const $ = id => document.getElementById(id);
+    const fmt = n => Number.isFinite(n) ? '₹' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '-';
+
     function saveUsers(obj){ localStorage.setItem(USER_KEY, JSON.stringify(obj)); }
     function loadUsers(){ return JSON.parse(localStorage.getItem(USER_KEY) || '{}'); }
-    let currentUser = null;
-    const $ = id => document.getElementById(id);
-    function showAuth(){ $('authView').classList.remove('hidden'); $('userPanel').classList.add('hidden'); }
-    function showUserPanel(){ $('authView').classList.add('hidden'); $('userPanel').classList.remove('hidden'); }
-    document.addEventListener('DOMContentLoaded', () => {
-      const usernameEl = $('username'); const pinEl = $('pin');
-      $('btnRegister').onclick = () => {
-        const u = usernameEl.value.trim(); const pin = pinEl.value.trim();
-        if(!u || !pin){ $('authMsg').textContent = 'Enter username and 4-digit PIN'; return; }
-        if(pin.length < 4){ $('authMsg').textContent = 'PIN must be 4 digits'; return; }
-        const users = loadUsers(); if(users[u]){ $('authMsg').textContent = 'Username exists'; return; }
-        users[u] = btoa(pin); saveUsers(users); $('authMsg').style.color='green'; $('authMsg').textContent='Registered. Now press Login.';
-      };
-      $('btnLogin').onclick = () => {
-        const u=usernameEl.value.trim(); const pin=pinEl.value.trim();
-        const users=loadUsers(); if(users[u]&&users[u]===btoa(pin)){ currentUser=u; $('displayUser').textContent=u; showUserPanel(); } else $('authMsg').textContent='Invalid username or PIN';
-      };
-      $('btnLogout').onclick = ()=>{currentUser=null; showAuth();};
-      $('btnChangePin').onclick = ()=>{
-        const newPin = prompt('Enter new 4-digit PIN');
-        if(newPin && newPin.length===4){ const users=loadUsers(); users[currentUser]=btoa(newPin); saveUsers(users); alert('PIN changed successfully'); }
-        else alert('Invalid PIN format');
-      };
-      showAuth();
+    function savePortfolioForUser(username, portfolio){ localStorage.setItem(STORAGE_PREFIX + username, JSON.stringify(portfolio)); }
+    function loadPortfolioForUser(username){ try{return JSON.parse(localStorage.getItem(STORAGE_PREFIX + username) || '[]')}catch(e){return []} }
+
+    async function fetchPrice(symbol){
+      try{
+        const url = PROXY + encodeURIComponent(`https://www.google.com/finance/quote/${symbol}:NSE`);
+        const res = await fetch(url);
+        if(!res.ok) throw new Error('network');
+        const html = await res.text();
+        const m = html.match(/class="YMlKec fxKbKc"[^>]*>([^<]+)</);
+        if(m && m[1]){ const raw = m[1].replace(/[^0-9.,]/g,'').replace(/,/g,''); const v=parseFloat(raw); if(Number.isFinite(v)) return v; }
+        return null;
+      }catch(e){ console.warn('fetch error', e); return null; }
+    }
+
+    // state
+    let currentUser = null; let portfolio = []; let editIndex = null; let autoTimer = null;
+
+    function applyTheme(theme){ if(theme==='dark'){ document.documentElement.classList.add('dark'); document.documentElement.classList.remove('light'); $('themeToggle').textContent='☀️'; } else { document.documentElement.classList.remove('dark'); document.documentElement.classList.add('light'); $('themeToggle').textContent='🌙'; } localStorage.setItem(THEME_KEY, theme); }
+
+    function renderTable(){ const tbody = $('tblBody'); tbody.innerHTML=''; let invested=0,current=0; portfolio.forEach((it,idx)=>{ const live = it.live || it.buy || 0; const inv=it.qty*it.buy; const cur=it.qty*live; invested+=inv; current+=cur; const pl = it.buy?((live-it.buy)/it.buy*100):0; const tr=document.createElement('tr'); tr.innerHTML=`<td>${it.symbol}</td><td>${it.qty}</td><td>${fmt(it.buy)}</td><td id="live-${idx}">${fmt(live)}</td><td>${fmt(inv)}</td><td>${fmt(cur)}</td><td>${pl.toFixed(2)}%</td><td><button data-i='${idx}' class='px-2 py-1 rounded bg-white border fetchBtn'>Refresh</button> <button data-i='${idx}' class='px-2 py-1 rounded bg-slate-100 border editBtn'>Edit</button> <button data-i='${idx}' class='px-2 py-1 rounded bg-red-50 text-red-600 border delBtn'>Del</button></td>`; tbody.appendChild(tr); });
+      $('totInvested').textContent=fmt(invested); $('totCurrent').textContent=fmt(current); const totPL = invested?((current-invested)/invested*100):0; $('totPL').textContent=totPL.toFixed(2)+'%';
+      document.querySelectorAll('.delBtn').forEach(b=>b.onclick=e=>{ const i=+e.target.dataset.i; portfolio.splice(i,1); savePortfolioForUser(currentUser,portfolio); renderTable(); });
+      document.querySelectorAll('.editBtn').forEach(b=>b.onclick=e=>{ openEdit(+e.target.dataset.i); });
+      document.querySelectorAll('.fetchBtn').forEach(b=>b.onclick=async e=>{ const i=+e.target.dataset.i; const s=portfolio[i].symbol; const old=portfolio[i].live||portfolio[i].buy; const p=await fetchPrice(s); if(p!==null){ portfolio[i].live=p; savePortfolioForUser(currentUser,portfolio); flashPrice(i,old,p); renderTable(); $('lastUpdated').textContent=new Date().toLocaleString(); } else alert('Failed to fetch '+s); });
+    }
+
+    function flashPrice(i,old,newP){ const el=$('live-'+i); if(!el) return; if(newP>old){ el.classList.add('flash-up'); setTimeout(()=>el.classList.remove('flash-up'),1000);} else if(newP<old){ el.classList.add('flash-down'); setTimeout(()=>el.classList.remove('flash-down'),1000);} }
+
+    async function loadAndFetchAll(){ portfolio = loadPortfolioForUser(currentUser)||[]; renderTable(); for(let i=0;i<portfolio.length;i++){ try{ const old=portfolio[i].live||portfolio[i].buy; const p=await fetchPrice(portfolio[i].symbol); if(p!==null){ portfolio[i].live=p; flashPrice(i,old,p);} }catch(e){console.warn(e);} } savePortfolioForUser(currentUser,portfolio); renderTable(); $('lastUpdated').textContent=new Date().toLocaleString(); }
+
+    function openAdd(){ editIndex=null; $('modalTitle').textContent='Add Stock'; $('mSymbol').value=''; $('mQty').value=1; $('mBuy').value=''; $('modalWrap').classList.remove('hidden'); }
+    function openEdit(i){ editIndex=i; const it=portfolio[i]; $('modalTitle').textContent='Edit Stock'; $('mSymbol').value=it.symbol; $('mQty').value=it.qty; $('mBuy').value=it.buy; $('modalWrap').classList.remove('hidden'); }
+
+    // events
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // theme init
+      const savedTheme = localStorage.getItem(THEME_KEY) || 'light'; applyTheme(savedTheme);
+
+      // auth elements
+      const usernameEl=$('username'), pinEl=$('pin');
+
+      $('btnRegister').onclick=()=>{ const u=usernameEl.value.trim(); const pin=pinEl.value.trim(); if(!u||!pin){ $('authMsg').textContent='Enter username and 4-digit PIN'; return; } if(pin.length<4){ $('authMsg').textContent='PIN must be 4 digits'; return; } const users=loadUsers(); if(users[u]){ $('authMsg').textContent='Username exists'; return;} users[u]=btoa(pin); saveUsers(users); $('authMsg').style.color='green'; $('authMsg').textContent='Registered — press Login'; setTimeout(()=>$('authMsg').textContent='',2000); };
+
+      $('btnLogin').onclick=()=>{ const u=usernameEl.value.trim(); const pin=pinEl.value.trim(); $('authMsg').textContent=''; if(!u||!pin){ $('authMsg').textContent='Enter username and PIN'; return;} const users=loadUsers(); if(users[u]&&users[u]===btoa(pin)){ currentUser=u; $('displayUser').textContent=u; $('statusMsg').textContent='Loading...'; $('authView').classList.add('hidden'); $('userPanel').classList.remove('hidden'); $('portfolioCard').classList.remove('hidden'); loadAndFetchAll(); if(autoTimer) clearInterval(autoTimer); autoTimer=setInterval(()=>loadAndFetchAll(),AUTO_REFRESH_MS); } else $('authMsg').textContent='Invalid username or PIN'; };
+
+      $('btnLogout').onclick=()=>{ currentUser=null; portfolio=[]; if(autoTimer) clearInterval(autoTimer); $('authView').classList.remove('hidden'); $('userPanel').classList.add('hidden'); $('portfolioCard').classList.add('hidden'); };
+
+      // settings icon -> open change PIN modal
+      $('btnSettings').onclick=()=>{ if(!currentUser){ alert('Login first'); return;} $('pinModal').classList.remove('hidden'); $('curPin').value=''; $('newPin').value=''; $('confirmPin').value=''; };
+      $('pinCancel').onclick=()=>$('pinModal').classList.add('hidden');
+      $('pinSave').onclick=()=>{
+        const cur=$('curPin').value.trim(); const nw=$('newPin').value.trim(); const cf=$('confirmPin').value.trim(); if(!cur||!nw||!cf){ alert('Enter all fields'); return;} if(nw.length<4||cf.length<4){ alert('PIN must be 4 digits'); return;} const users=loadUsers(); if(!users[currentUser]||users[currentUser]!==btoa(cur)){ alert('Current PIN incorrect'); return;} if(nw!==cf){ alert('New PIN and confirm do not match'); return;} users[currentUser]=btoa(nw); saveUsers(users); alert('PIN changed'); $('pinModal').classList.add('hidden'); };
+
+      // theme toggle
+      $('themeToggle').onclick=()=>{ const now = document.documentElement.classList.contains('dark')? 'light' : 'dark'; applyTheme(now); };
+
+      // add/edit modal
+      $('btnAdd').onclick=openAdd; $('modalCancel').onclick=()=>$('modalWrap').classList.add('hidden');
+      $('modalSave').onclick=async ()=>{ const s=$('mSymbol').value.trim().toUpperCase(); const q=parseFloat($('mQty').value); const b=parseFloat($('mBuy').value); if(!s||!(q>0)||!(b>0)){ alert('Enter valid symbol, qty and buy price'); return;} const entry={symbol:s,qty:q,buy:b}; if(editIndex===null) portfolio.push(entry); else portfolio[editIndex]=Object.assign(portfolio[editIndex],entry); savePortfolioForUser(currentUser,portfolio); $('modalWrap').classList.add('hidden'); renderTable(); const idx=(editIndex===null)?portfolio.length-1:editIndex; const p=await fetchPrice(portfolio[idx].symbol); if(p!==null){ portfolio[idx].live=p; savePortfolioForUser(currentUser,portfolio); renderTable(); $('lastUpdated').textContent=new Date().toLocaleString(); } };
+
+      // fetch all
+      $('btnFetchAll').onclick=async ()=>{ $('statusMsg').textContent='Refreshing...'; await loadAndFetchAll(); $('statusMsg').textContent='Prices updated'; };
+
+      // import/export
+      $('btnExport').onclick=()=>{ if(!currentUser){ alert('Login first'); return;} const data=loadPortfolioForUser(currentUser)||[]; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=currentUser+'-portfolio.json'; a.click(); URL.revokeObjectURL(url); };
+      $('btnImport').onclick=()=>$('fileInput').click();
+      $('fileInput').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(Array.isArray(d)){ portfolio=d; savePortfolioForUser(currentUser,portfolio); renderTable(); alert('Imported'); } else alert('Invalid JSON'); }catch(err){ alert('Invalid JSON'); } }; r.readAsText(f); };
+
+      // prevent form submit
+      $('authForm').addEventListener('submit', e=>e.preventDefault());
+
+      // initial ui
+      // if user had a preferred theme, apply
+      const pref = localStorage.getItem(THEME_KEY) || 'light'; applyTheme(pref);
     });
   </script>
 </body>
