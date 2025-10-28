@@ -3,169 +3,165 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NSE Portfolio — Portfolio + IPOs (Chittorgarh)</title>
-  <meta name="description" content="Client-side NSE portfolio + IPO tracker with auto-fetch (Chittorgarh), PIN login, live prices and import/export." />
+  <title>NSE Portfolio — Your Portfolio</title>
+  <meta name="description" content="Lightweight client-side NSE portfolio tracker with PIN login, live prices and import/export." />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    /* Pastel glassmorphic theme */
     :root{
-      --bg1: #eef9f6; --bg2:#f1f8ff; --card: rgba(255,255,255,0.94); --muted: rgba(17,24,39,0.6);
-      --accent-1: rgba(199,236,234,0.9); --accent-2: rgba(224,235,255,0.9); --accent-3: rgba(243,238,255,0.9);
+      --bg1: #eef9f6;
+      --bg2: #f1f8ff;
+      --card: rgba(255,255,255,0.9);
+      --muted: rgba(17,24,39,0.6);
+      --accent-1: rgba(199,236,234,0.9);
+      --accent-2: rgba(224,235,255,0.9);
+      --accent-3: rgba(243,238,255,0.9);
     }
-    .dark{--bg1:#071020;--bg2:#08111a;--card:rgba(10,16,22,0.88);--muted:rgba(203,213,225,0.7);}
-    body{background:linear-gradient(135deg,var(--bg1),var(--bg2));min-height:100vh;font-family:Inter,system-ui,Arial,-apple-system}
-    .glass{background:var(--card);backdrop-filter:blur(6px);border-radius:14px}
+    .dark{
+      --bg1: #071020;
+      --bg2: #08111a;
+      --card: rgba(10,16,22,0.85);
+      --muted: rgba(203,213,225,0.7);
+      --accent-1: rgba(18,55,46,0.35);
+      --accent-2: rgba(18,42,70,0.35);
+      --accent-3: rgba(39,24,54,0.35);
+    }
+    body{
+      background: linear-gradient(135deg,var(--bg1),var(--bg2));
+      min-height:100vh;
+      -webkit-font-smoothing:antialiased;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+    }
+    .glass{background:var(--card);backdrop-filter: blur(6px); border-radius:16px;}
     .muted{color:var(--muted)}
-    table{border-collapse:collapse;width:100%;font-size:0.95rem}
-    th,td{padding:10px 8px;border-bottom:1px solid rgba(0,0,0,0.06)}
-    .dark th,.dark td{border-bottom:1px solid rgba(255,255,255,0.04)}
-    thead th{background:linear-gradient(90deg,var(--accent-2),var(--accent-3));position:sticky;top:0;z-index:2}
-    tbody tr:nth-child(odd){background:linear-gradient(90deg,rgba(255,255,255,0.012),transparent)}
-    tfoot td{font-weight:700;background:linear-gradient(90deg,var(--accent-1),var(--accent-2))}
-    .profit{color:#0f9d58;font-weight:600}
-    .loss{color:#e53935;font-weight:600}
-    .tab{padding:8px 12px;border-radius:10px;cursor:pointer}
-    .tab-active{background:linear-gradient(90deg,#e0f7fa,#e8f0ff);box-shadow:0 6px 18px rgba(2,6,23,0.06)}
-    .fab{position:fixed;right:18px;bottom:18px;z-index:80;width:56px;height:56px;border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(2,6,23,0.12)}
-    @media(min-width:768px){.sticky-aside{position:sticky;top:28px}}
-    .small { font-size:0.85rem; }
+    /* table styling */
+    table { border-collapse: collapse; width:100%; font-size:0.95rem; }
+    th, td { padding:10px 8px; text-align:left; border-bottom:1px solid rgba(0,0,0,0.06); }
+    .dark th, .dark td { border-bottom:1px solid rgba(255,255,255,0.04); }
+    thead th { background: linear-gradient(90deg,var(--accent-2),var(--accent-3)); position:sticky; top:0; z-index:2; }
+    tbody tr:nth-child(odd){ background: linear-gradient(90deg, rgba(255,255,255,0.015), rgba(255,255,255,0)); }
+    .dark tbody tr:nth-child(odd){ background: linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); }
+    tfoot td { font-weight:700; background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); }
+    .profit { color: #0f9d58; font-weight:600; }
+    .loss { color: #e53935; font-weight:600; }
+    .fab { position: fixed; right: 18px; bottom: 18px; z-index:80; width:56px; height:56px; border-radius:999px; display:flex;align-items:center;justify-content:center; box-shadow: 0 10px 30px rgba(2,6,23,0.12); }
+    /* responsive tweaks */
+    @media (min-width:768px){
+      .sticky-aside{ position:sticky; top:28px; }
+    }
+    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   </style>
 </head>
 <body class="p-4 sm:p-6">
-  <div class="max-w-7xl mx-auto">
-    <div class="flex gap-4 items-center mb-4">
-      <h1 class="text-2xl font-semibold">Your Portfolio</h1>
-      <div class="ml-4 flex gap-2">
-        <div id="tabPortfolio" class="tab tab-active">Portfolio</div>
-        <div id="tabIPO" class="tab">IPO Tracker</div>
-      </div>
-      <div class="ml-auto muted text-sm">Updated: <span id="globalUpdated">-</span></div>
-    </div>
+  <div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-6">
+    <!-- Left panel -->
+    <aside class="md:w-4/12">
+      <div id="authCard" class="glass p-5 shadow sticky-aside">
+        <h1 class="text-xl font-semibold">Your Portfolio</h1>
+        <p class="muted text-sm mt-1">Light & colorful — client-side only. Sign in with username + 4-digit PIN.</p>
 
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
-      <!-- Left: Auth -->
-      <aside class="md:w-4/12">
-        <div class="glass p-5 shadow sticky-aside">
-          <p class="muted text-sm">Sign in with username + 4-digit PIN (stored locally).</p>
-          <form id="authForm" class="mt-3 space-y-3" onsubmit="return false;">
-            <label class="block text-sm">Username
-              <input id="username" class="mt-1 w-full rounded-md border p-2" placeholder="yourname" autocomplete="username" />
-            </label>
-            <label class="block text-sm">PIN
-              <input id="pin" type="password" maxlength="4" class="mt-1 w-full rounded-md border p-2" placeholder="1234" />
-            </label>
+        <!-- login -->
+        <form id="authForm" class="mt-4 space-y-3" onsubmit="return false;">
+          <label class="block text-sm">Username
+            <input id="username" class="mt-1 w-full rounded-md border border-gray-200 p-2" placeholder="yourname" autocomplete="username" aria-label="username" />
+          </label>
+          <label class="block text-sm">4-digit PIN
+            <input id="pin" type="password" inputmode="numeric" maxlength="4" class="mt-1 w-full rounded-md border border-gray-200 p-2" placeholder="1234" aria-label="pin" />
+          </label>
+
+          <div class="flex gap-2">
+            <button id="btnRegister" type="button" class="flex-1 py-2 rounded-md bg-emerald-500 text-white">Register</button>
+            <button id="btnLogin" type="button" class="flex-1 py-2 rounded-md border">Login</button>
+          </div>
+          <div id="authMsg" class="text-sm text-red-600"></div>
+        </form>
+
+        <!-- user panel -->
+        <div id="userPanel" class="hidden mt-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <div id="displayUser" class="font-medium"></div>
+              <div id="statusMsg" class="muted text-sm">Portfolio ready</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="themeToggle" aria-label="Toggle theme" class="p-2 rounded-md border">🌙</button>
+              <button id="btnSettings" aria-label="Settings" class="p-2 rounded-md border">⚙️</button>
+              <button id="btnLogout" class="py-2 px-3 rounded-md border">Logout</button>
+            </div>
+          </div>
+
+          <div class="mt-4 space-y-2">
+            <button id="btnAdd" class="w-full py-2 rounded-md bg-sky-500 text-white">Add stock</button>
+            <button id="btnFetchAll" class="w-full py-2 rounded-md border">Refresh prices</button>
             <div class="flex gap-2">
-              <button id="btnRegister" type="button" class="flex-1 py-2 rounded-md bg-emerald-500 text-white">Register</button>
-              <button id="btnLogin" type="button" class="flex-1 py-2 rounded-md border">Login</button>
+              <button id="btnImport" class="flex-1 py-2 rounded-md border">Import</button>
+              <button id="btnExport" class="flex-1 py-2 rounded-md border">Export</button>
             </div>
-            <div id="authMsg" class="text-sm text-red-600"></div>
-          </form>
-
-          <div id="userPanel" class="hidden mt-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <div id="displayUser" class="font-medium"></div>
-                <div id="statusMsg" class="muted text-sm">Choose a tab to begin.</div>
-              </div>
-              <div class="flex items-center gap-2">
-                <button id="themeToggle" class="p-2 rounded-md border">🌙</button>
-                <button id="btnSettings" class="p-2 rounded-md border">⚙️</button>
-                <button id="btnLogout" class="py-2 px-3 rounded-md border">Logout</button>
-              </div>
-            </div>
-
-            <div class="mt-4 space-y-2">
-              <button id="btnAdd" class="w-full py-2 rounded-md bg-sky-500 text-white">Add stock</button>
-              <button id="btnFetchAll" class="w-full py-2 rounded-md border">Refresh prices</button>
-              <div class="flex gap-2">
-                <button id="btnImport" class="flex-1 py-2 rounded-md border">Import</button>
-                <button id="btnExport" class="flex-1 py-2 rounded-md border">Export</button>
-              </div>
-            </div>
-
-            <input id="fileInput" type="file" accept="application/json" class="hidden" />
-            <div class="mt-3 text-xs muted">Prices via Google Finance (AllOrigins). IPOs auto-fetch from Chittorgarh (best-effort).</div>
           </div>
+
+          <input id="fileInput" type="file" accept="application/json" class="hidden" />
+          <div class="mt-3 text-xs muted">Prices via Google Finance (AllOrigins proxy). Auto-refresh every 5 minutes.</div>
         </div>
-      </aside>
+      </div>
+    </aside>
 
-      <!-- Right: content area -->
-      <main class="md:w-8/12">
-        <!-- Portfolio Card -->
-        <div id="portfolioCard" class="glass p-5 shadow hidden">
-          <div id="portfolioArea">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-lg font-semibold">Holdings</h2>
-              <div class="muted text-sm">Last: <span id="lastUpdated">-</span></div>
-            </div>
-            <div class="overflow-auto">
-              <table id="portfolioTable" class="min-w-[720px]">
-                <thead>
-                  <tr>
-                    <th>Stock</th><th>Qty</th><th>Buy ₹</th><th>Live ₹</th><th>Invested ₹</th>
-                    <th>Current ₹</th><th>P&L ₹</th><th>P/L %</th><th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="tblBody"></tbody>
-                <tfoot>
-                  <tr id="totalsRow">
-                    <td colspan="4">Totals</td>
-                    <td id="totInvested">-</td>
-                    <td id="totCurrent">-</td>
-                    <td id="totPLRs">-</td>
-                    <td id="totPLPerc">-</td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-
-          <!-- IPO Area (hidden by default) -->
-          <div id="ipoArea" class="hidden">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-lg font-semibold">IPO Tracker — Current week + upcoming</h2>
-              <div class="flex items-center gap-2">
-                <input id="ipoSearch" placeholder="Search company or status" class="rounded-md border p-2 text-sm" />
-                <button id="btnIpoRefresh" class="py-2 px-3 rounded-md border">Refresh IPOs</button>
-                <button id="btnImportIpo" class="py-2 px-3 rounded-md border">Import IPOs</button>
-                <button id="btnExportIpo" class="py-2 px-3 rounded-md border">Export IPOs</button>
-              </div>
-            </div>
-
-            <div class="overflow-auto">
-              <table id="ipoTable" class="min-w-[720px]">
-                <thead>
-                  <tr>
-                    <th>Company</th><th>Issue ₹</th><th>GMP ₹</th><th>Open</th><th>Close</th><th>Listing</th><th>Status</th><th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="ipoBody"></tbody>
-                <tfoot>
-                  <tr>
-                    <td colspan="8" class="muted small">Auto-fetched from Chittorgarh (best-effort). Edit GMP or dates manually when missing.</td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-
+    <!-- Right panel -->
+    <main class="md:w-8/12">
+      <div id="portfolioCard" class="glass p-5 shadow hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold">Holdings</h2>
+          <div class="muted text-sm">Updated: <span id="lastUpdated">-</span></div>
         </div>
-      </main>
-    </div>
+
+        <div class="overflow-auto">
+          <table id="portfolioTable" class="min-w-[720px]">
+            <thead>
+              <tr>
+                <th>Stock</th>
+                <th>Qty</th>
+                <th>Buy ₹</th>
+                <th>Live ₹</th>
+                <th>Invested ₹</th>
+                <th>Current ₹</th>
+                <th>P&L ₹</th>
+                <th>P/L %</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tblBody"></tbody>
+            <tfoot>
+              <tr id="totalsRow">
+                <td colspan="4">Totals</td>
+                <td id="totInvested">-</td>
+                <td id="totCurrent">-</td>
+                <td id="totPLRs">-</td>
+                <td id="totPLPerc">-</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="mt-3 text-xs muted">Tip: Use Import/Export to backup your portfolio file.</div>
+      </div>
+    </main>
   </div>
 
-  <!-- FAB -->
-  <button id="fabAdd" class="fab bg-sky-500 text-white hidden" title="Add" aria-label="Add">+</button>
+  <!-- FAB for mobile -->
+  <button id="fabAdd" class="fab bg-sky-500 text-white hidden" title="Add stock" aria-label="Add stock">+</button>
 
-  <!-- Add/Edit Stock Modal -->
+  <!-- Add/Edit Modal -->
   <div id="modalWrap" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
     <div class="bg-white dark:bg-gray-800 rounded-xl p-5 max-w-md w-full">
       <h3 id="modalTitle" class="font-semibold mb-2">Add stock</h3>
       <div class="space-y-3">
         <label class="block text-sm">Symbol
-          <input id="mSymbol" list="sugStocks" class="mt-1 w-full rounded-md border p-2" placeholder="RELIANCE" />
-          <datalist id="sugStocks"><option value="RELIANCE"></option><option value="TCS"></option><option value="INFY"></option></datalist>
+          <input id="mSymbol" list="suggest" class="mt-1 w-full rounded-md border p-2" placeholder="RELIANCE" />
+          <datalist id="suggest">
+            <option value="RELIANCE"></option><option value="TCS"></option><option value="INFY"></option>
+            <option value="HDFCBANK"></option><option value="ICICIBANK"></option><option value="SBIN"></option>
+            <option value="LT"></option><option value="HINDUNILVR"></option><option value="AXISBANK"></option>
+          </datalist>
         </label>
         <label class="block text-sm">Quantity
           <input id="mQty" type="number" min="1" class="mt-1 w-full rounded-md border p-2" value="1" />
@@ -181,46 +177,35 @@
     </div>
   </div>
 
-  <!-- Add/Edit IPO Modal -->
-  <div id="ipoModal" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
+  <!-- Change PIN Modal -->
+  <div id="pinModal" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
     <div class="bg-white dark:bg-gray-800 rounded-xl p-5 max-w-md w-full">
-      <h3 id="ipoModalTitle" class="font-semibold mb-2">Add IPO</h3>
+      <h3 class="font-semibold mb-2">Change PIN</h3>
       <div class="space-y-3">
-        <label class="block text-sm">Company
-          <input id="iCompany" class="mt-1 w-full rounded-md border p-2" placeholder="Company Ltd" />
+        <label class="block text-sm">Current PIN
+          <input id="curPin" type="password" class="mt-1 w-full rounded-md border p-2" />
         </label>
-        <label class="block text-sm">Issue Price ₹
-          <input id="iIssue" type="number" step="0.01" class="mt-1 w-full rounded-md border p-2" />
+        <label class="block text-sm">New 4-digit PIN
+          <input id="newPin" type="password" maxlength="4" class="mt-1 w-full rounded-md border p-2" />
         </label>
-        <label class="block text-sm">GMP ₹
-          <input id="iGmp" type="number" step="0.01" class="mt-1 w-full rounded-md border p-2" />
-        </label>
-        <label class="block text-sm">Open Date
-          <input id="iOpen" type="date" class="mt-1 w-full rounded-md border p-2" />
-        </label>
-        <label class="block text-sm">Close Date
-          <input id="iClose" type="date" class="mt-1 w-full rounded-md border p-2" />
-        </label>
-        <label class="block text-sm">Listing Date
-          <input id="iListing" type="date" class="mt-1 w-full rounded-md border p-2" />
+        <label class="block text-sm">Confirm New PIN
+          <input id="confirmPin" type="password" maxlength="4" class="mt-1 w-full rounded-md border p-2" />
         </label>
       </div>
       <div class="mt-4 flex justify-end gap-2">
-        <button id="ipoCancel" class="px-4 py-2 rounded-md border">Cancel</button>
-        <button id="ipoSave" class="px-4 py-2 rounded-md bg-sky-500 text-white">Save IPO</button>
+        <button id="pinCancel" class="px-4 py-2 rounded-md border">Cancel</button>
+        <button id="pinSave" class="px-4 py-2 rounded-md bg-yellow-400">Save</button>
       </div>
     </div>
   </div>
 
 <script>
-/* Final app (Option 2 - Chittorgarh auto-fetch) */
+/* App script: PIN auth + portfolio + AllOrigins price fetch + responsive UI */
 const PROXY = 'https://api.allorigins.win/raw?url=';
-const USER_KEY = 'nse_app_users_v5';
-const STORAGE_PREFIX = 'nse_portfolio_user_v5_';
-const IPO_STORE = 'nse_ipos_v5_';
-const THEME_KEY = 'nse_theme_v5';
+const USER_KEY = 'nse_app_users_v4';
+const STORAGE_PREFIX = 'nse_portfolio_user_v4_';
+const THEME_KEY = 'nse_theme_v4';
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
-const IPO_DAILY_REFRESH = 24 * 60 * 60 * 1000;
 
 const $ = id => document.getElementById(id);
 
@@ -228,8 +213,6 @@ function saveUsers(obj){ localStorage.setItem(USER_KEY, JSON.stringify(obj)); }
 function loadUsers(){ return JSON.parse(localStorage.getItem(USER_KEY) || '{}'); }
 function savePortfolioForUser(username, portfolio){ localStorage.setItem(STORAGE_PREFIX + username, JSON.stringify(portfolio)); }
 function loadPortfolioForUser(username){ try{return JSON.parse(localStorage.getItem(STORAGE_PREFIX + username) || '[]')}catch(e){return []} }
-function saveIPOForUser(username, data){ localStorage.setItem(IPO_STORE + username, JSON.stringify({ts:Date.now(),data})); }
-function loadIPOForUser(username){ try{ const raw=localStorage.getItem(IPO_STORE + username); if(!raw) return {ts:0,data:[]}; return JSON.parse(raw);}catch(e){return {ts:0,data:[]};} }
 
 async function fetchPrice(symbol){
   try{
@@ -243,104 +226,16 @@ async function fetchPrice(symbol){
   }catch(e){ console.warn('fetch error', e); return null; }
 }
 
-/* === Chittorgarh parser (robust, best-effort) === */
-async function fetchIPOsFromChittorgarh(){
-  const url = 'https://www.chittorgarh.com/ipo/upcoming-ipo/';
-  try{
-    const res = await fetch(PROXY + encodeURIComponent(url));
-    if(!res.ok) throw new Error('network');
-    const html = await res.text();
-    // Find table rows that look like IPO listings
-    const ipos = [];
-    // Find blocks of content under <table class="table table-striped"> or similar
-    // We'll search for patterns like Company Name ... Issue Price ... Opening Date ... Closing Date
-    const snippetRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-    let m;
-    while((m = snippetRegex.exec(html))){
-      const rowHtml = m[1];
-      // remove tags and normalize spaces
-      const text = rowHtml.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
-      // crude heuristics: if row contains a 4-digit year or 'IPO' or 'Open' prefer it
-      if(!text) continue;
-      // skip header-like rows
-      if(/Company|Issue|Open|Close|Listing/i.test(text) && /[A-Za-z]/.test(text)){
-        // try to extract company name: text before first date or price
-        const companyMatch = text.match(/^([A-Z][A-Za-z0-9&\.\-\s]{2,80}?)(?:\s{2,}|\s-\s|,|₹|\d{1,2}\-|\d{2}\/\d{2}\/\d{4}|Open|Close|Listing)/i);
-        const company = companyMatch ? companyMatch[1].trim() : text.split(' ')[0];
-        // issue price (look for patterns like 50-55 or 50 to 55)
-        const issueMatch = text.match(/(\d{1,4}(?:,\d{3})*(?:\.\d+)?\s*(?:to|-)\s*\d{1,4}(?:,\d{3})*(?:\.\d+)?)/);
-        const issue = issueMatch ? issueMatch[0].replace(/,/g,'') : '';
-        // dates
-        const dateMatch = text.match(/(\d{1,2}\-\w{3}\-\d{4})/); // e.g., 07-Sep-2025
-        const open = dateMatch ? parseChittoDate(dateMatch[0]) : null;
-        // push simple object
-        ipos.push({company, issue, gmp:null, open: open? open.toISOString(): null, close: null, listing: null, status:'Upcoming', source:'chittorgarh', raw: text});
-      }
-    }
-    // also attempt to extract from other parts - fallback: search for lines with 'IPO'
-    if(ipos.length === 0){
-      const lines = html.split('\n');
-      for(const ln of lines){
-        if(/IPO/i.test(ln) && /<a[^>]*>([^<]+)<\/a>/i.test(ln)){
-          const cm = ln.match(/<a[^>]*>([^<]+)<\/a>/i);
-          if(cm){
-            ipos.push({company:cm[1].trim(), issue:'', gmp:null, open:null, close:null, listing:null, status:'Upcoming', source:'chittorgarh', raw:ln});
-          }
-        }
-      }
-    }
-    return ipos;
-  }catch(e){
-    console.warn('chittorgarh fetch failed', e);
-    return [];
-  }
-}
+// state
+let currentUser = null, portfolio = [], editIndex = null, autoTimer = null;
 
-function parseChittoDate(s){
-  try{
-    const parts = s.split('-');
-    if(parts.length !== 3) return null;
-    const d = parseInt(parts[0],10);
-    const mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const m = mNames.indexOf(parts[1]);
-    const y = parseInt(parts[2],10);
-    if(m < 0) return null;
-    return new Date(y,m,d);
-  }catch(e){
-    return null;
-  }
-}
-
-function filterRelevantIPOs(ipos){
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay()); // sunday
-  const futureLimit = new Date(now);
-  futureLimit.setDate(now.getDate() + 30); // next 30 days
-  return ipos.filter(i => {
-    if(!i.open && !i.close && !i.listing) return true;
-    const dates = [i.open, i.close, i.listing].filter(Boolean).map(d => new Date(d));
-    for(const dt of dates){
-      if(dt >= weekStart && dt <= futureLimit) return true;
-    }
-    return false;
-  });
-}
-
-/* ---------- App state & helpers ---------- */
 function fmt(n){ return Number.isFinite(n) ? '₹' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '-'; }
-function toNum(v){ const n=parseFloat(v); return Number.isFinite(n)?n:null; }
-
-let currentUser = null, portfolio = [], editIndex = null, autoTimer = null, ipoData = [];
 
 function applyTheme(theme){ if(theme==='dark'){ document.documentElement.classList.add('dark'); $('themeToggle').textContent='☀️'; } else { document.documentElement.classList.remove('dark'); $('themeToggle').textContent='🌙'; } localStorage.setItem(THEME_KEY, theme); }
 
-/* ---------- Portfolio render & actions ---------- */
-async function fetchPriceSafe(symbol){ return await fetchPrice(symbol); }
-
-function renderPortfolio(){
+function renderTable(){
   const tbody = $('tblBody'); tbody.innerHTML=''; let invested=0, current=0, plrs=0;
-  portfolio.forEach((it, idx)=>{
+  portfolio.forEach((it, idx) => {
     const live = it.live || it.buy || 0;
     const investedRow = it.qty * it.buy;
     const currentRow = it.qty * live;
@@ -349,151 +244,147 @@ function renderPortfolio(){
     const plPerc = it.buy ? ((live - it.buy)/it.buy*100) : 0;
     const tr = document.createElement('tr');
     const plClass = plValue >= 0 ? 'profit' : 'loss';
-    tr.innerHTML = `<td class="font-medium">${it.symbol}</td><td>${it.qty}</td><td>${fmt(it.buy)}</td><td id="live-${idx}">${fmt(live)}</td><td>${fmt(investedRow)}</td><td>${fmt(currentRow)}</td><td class="${plClass}">${fmt(plValue)}</td><td class="${plClass}">${plPerc.toFixed(2)}%</td><td><button data-i="${idx}" class="px-2 py-1 rounded-md border fetchBtn">Refresh</button> <button data-i="${idx}" class="px-2 py-1 rounded-md border editBtn">Edit</button> <button data-i="${idx}" class="px-2 py-1 rounded-md border text-red-600 delBtn">Del</button></td>`;
+    tr.innerHTML = `
+      <td class="font-medium">${it.symbol}</td>
+      <td>${it.qty}</td>
+      <td>${fmt(it.buy)}</td>
+      <td id="live-${idx}">${fmt(live)}</td>
+      <td>${fmt(investedRow)}</td>
+      <td>${fmt(currentRow)}</td>
+      <td class="${plClass}">${fmt(plValue)}</td>
+      <td class="${plClass}">${plPerc.toFixed(2)}%</td>
+      <td>
+        <button data-i="${idx}" class="px-2 py-1 rounded-md border fetchBtn">Refresh</button>
+        <button data-i="${idx}" class="px-2 py-1 rounded-md border editBtn">Edit</button>
+        <button data-i="${idx}" class="px-2 py-1 rounded-md border text-red-600 delBtn">Del</button>
+      </td>`;
     tbody.appendChild(tr);
   });
+  // totals at bottom
   $('totInvested').textContent = fmt(invested);
   $('totCurrent').textContent = fmt(current);
   $('totPLRs').textContent = fmt(plrs);
   const totPerc = invested ? ((current - invested)/invested*100) : 0;
   $('totPLPerc').textContent = totPerc.toFixed(2) + '%';
 
-  // bind buttons
-  tbody.querySelectorAll('.delBtn').forEach(b=>b.onclick = e => { const i=+e.target.dataset.i; portfolio.splice(i,1); savePortfolioForUser(currentUser,portfolio); renderPortfolio(); });
-  tbody.querySelectorAll('.editBtn').forEach(b=>b.onclick = e => { openEdit(+e.target.dataset.i); });
-  tbody.querySelectorAll('.fetchBtn').forEach(b=>b.onclick = async e => {
-    const i = +e.target.dataset.i; const old = portfolio[i].live || portfolio[i].buy;
-    const p = await fetchPriceSafe(portfolio[i].symbol);
-    if(p!==null){ portfolio[i].live = p; savePortfolioForUser(currentUser,portfolio); flashPrice(i,old,p); renderPortfolio(); $('lastUpdated').textContent = new Date().toLocaleString(); $('globalUpdated').textContent = new Date().toLocaleString(); }
-    else alert('Price fetch failed for '+portfolio[i].symbol);
+  // wire buttons
+  document.querySelectorAll('.delBtn').forEach(b => b.onclick = e => { const i = +e.target.dataset.i; portfolio.splice(i,1); savePortfolioForUser(currentUser, portfolio); renderTable(); });
+  document.querySelectorAll('.editBtn').forEach(b => b.onclick = e => { openEdit(+e.target.dataset.i); });
+  document.querySelectorAll('.fetchBtn').forEach(b => b.onclick = async e => {
+    const i = +e.target.dataset.i; const s = portfolio[i].symbol; const old = portfolio[i].live || portfolio[i].buy;
+    const p = await fetchPrice(s);
+    if(p !== null){ portfolio[i].live = p; savePortfolioForUser(currentUser, portfolio); flashPrice(i, old, p); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); }
+    else alert('Price fetch failed for ' + s);
   });
 }
 
 function flashPrice(idx, oldPrice, newPrice){
-  const el = $('live-'+idx); if(!el) return;
-  if(newPrice>oldPrice){ el.classList.add('profit'); setTimeout(()=>el.classList.remove('profit'),900); }
-  else if(newPrice<oldPrice){ el.classList.add('loss'); setTimeout(()=>el.classList.remove('loss'),900); }
+  const el = $('live-' + idx); if(!el) return;
+  if(newPrice > oldPrice) { el.classList.add('profit'); setTimeout(()=>el.classList.remove('profit'),900); }
+  else if(newPrice < oldPrice){ el.classList.add('loss'); setTimeout(()=>el.classList.remove('loss'),900); }
 }
 
 async function loadAndFetchAll(){
-  portfolio = loadPortfolioForUser(currentUser) || []; renderPortfolio();
+  portfolio = loadPortfolioForUser(currentUser) || []; renderTable();
   for(let i=0;i<portfolio.length;i++){
     try{
       const old = portfolio[i].live || portfolio[i].buy;
-      const p = await fetchPriceSafe(portfolio[i].symbol);
-      if(p!==null){ portfolio[i].live = p; flashPrice(i,old,p); }
-    }catch(e){console.warn(e);}
+      const p = await fetchPrice(portfolio[i].symbol);
+      if(p !== null){ portfolio[i].live = p; flashPrice(i, old, p); }
+    }catch(e){ console.warn(e); }
   }
-  savePortfolioForUser(currentUser,portfolio); renderPortfolio(); $('lastUpdated').textContent = new Date().toLocaleString(); $('globalUpdated').textContent = new Date().toLocaleString();
+  savePortfolioForUser(currentUser, portfolio); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString();
 }
 
-/* ---------- IPO render & actions ---------- */
-function renderIPOs(filterText=''){
-  const tbody = $('ipoBody'); tbody.innerHTML=''; const ft=(filterText||'').toLowerCase();
-  ipoData.forEach((it, idx)=>{
-    if(ft && !((it.company||'').toLowerCase().includes(ft) || (it.status||'').toLowerCase().includes(ft))) return;
-    const open = it.open ? new Date(it.open).toLocaleDateString() : '-';
-    const close = it.close ? new Date(it.close).toLocaleDateString() : '-';
-    const listing = it.listing ? new Date(it.listing).toLocaleDateString() : '-';
-    const gmpClass = (it.gmp || 0) >= 0 ? 'profit' : 'loss';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="font-medium">${it.company}</td><td>${it.issue||'-'}</td><td class="${gmpClass}">${it.gmp!==null?fmt(it.gmp):'-'}</td><td>${open}</td><td>${close}</td><td>${listing}</td><td>${it.status||'-'}</td><td><button data-i="${idx}" class="px-2 py-1 rounded-md border editIpo">Edit</button> <button data-i="${idx}" class="px-2 py-1 rounded-md border delIpo text-red-600">Del</button></td>`;
-    tbody.appendChild(tr);
-  });
-  // bind edit/del inside
-  tbody.querySelectorAll('.editIpo').forEach(b=>b.onclick = e => { openEditIPO(+e.target.dataset.i); });
-  tbody.querySelectorAll('.delIpo').forEach(b=>b.onclick = e => { const i=+e.target.dataset.i; if(confirm('Delete IPO?')){ ipoData.splice(i,1); saveIPOForUser(currentUser,ipoData); renderIPOs($('ipoSearch').value); } });
-}
+function openAdd(){ editIndex = null; $('modalTitle').textContent = 'Add stock'; $('mSymbol').value=''; $('mQty').value=1; $('mBuy').value=''; $('modalWrap').classList.remove('hidden'); }
+function openEdit(i){ editIndex = i; const it = portfolio[i]; $('modalTitle').textContent = 'Edit stock'; $('mSymbol').value = it.symbol; $('mQty').value = it.qty; $('mBuy').value = it.buy; $('modalWrap').classList.remove('hidden'); }
 
-/* ---------- Modal helpers ---------- */
-function openAdd(){ editIndex=null; $('modalTitle').textContent='Add stock'; $('mSymbol').value=''; $('mQty').value=1; $('mBuy').value=''; $('modalWrap').classList.remove('hidden'); }
-function openEdit(i){ editIndex=i; const it = portfolio[i]; $('modalTitle').textContent='Edit stock'; $('mSymbol').value=it.symbol; $('mQty').value=it.qty; $('mBuy').value=it.buy; $('modalWrap').classList.remove('hidden'); }
-function openAddIPO(){ window.currentIpoEdit=null; $('ipoModalTitle').textContent='Add IPO'; $('iCompany').value=''; $('iIssue').value=''; $('iGmp').value=''; $('iOpen').value=''; $('iClose').value=''; $('iListing').value=''; $('ipoModal').classList.remove('hidden'); }
-function openEditIPO(i){ window.currentIpoEdit=i; const it=ipoData[i]; $('ipoModalTitle').textContent='Edit IPO'; $('iCompany').value=it.company||''; $('iIssue').value=it.issue||''; $('iGmp').value=it.gmp||''; $('iOpen').value=it.open? (new Date(it.open)).toISOString().slice(0,10):''; $('iClose').value=it.close? (new Date(it.close)).toISOString().slice(0,10):''; $('iListing').value=it.listing? (new Date(it.listing)).toISOString().slice(0,10):''; $('ipoModal').classList.remove('hidden'); }
-
-/* ---------- Auto-fetch IPO flow ---------- */
-async function refreshIPOs(){
-  if(!currentUser){ alert('Login first'); return; }
-  $('statusMsg').textContent = 'Fetching IPOs...';
-  try{
-    const fetched = await fetchIPOsFromChittorgarh();
-    // dedupe & merge with saved manual
-    const saved = loadIPOForUser(currentUser).data || [];
-    const map = {};
-    saved.forEach(s => { const k=(s.company||'').toLowerCase().trim(); if(k) map[k]=s; });
-    fetched.forEach(f => { const k=(f.company||'').toLowerCase().trim(); if(k && !map[k]) map[k]=f; });
-    ipoData = Object.values(map);
-    // filter relevant window
-    ipoData = filterRelevantIPOs(ipoData);
-    saveIPOForUser(currentUser, ipoData);
-    renderIPOs('');
-    $('statusMsg').textContent = 'IPOs updated';
-    $('globalUpdated').textContent = new Date().toLocaleString();
-  }catch(e){
-    console.warn(e); $('statusMsg').textContent='Failed to fetch IPOs'; alert('Failed to fetch IPOs (see console)');
-  }
-}
-
-/* ---------- DOM events and init ---------- */
 document.addEventListener('DOMContentLoaded', () => {
-  // theme
+  // init theme
   const savedTheme = localStorage.getItem(THEME_KEY) || 'light'; applyTheme(savedTheme);
 
-  // tabs
-  const tabP = $('tabPortfolio'), tabI = $('tabIPO');
-  function showPortfolioTab(){ tabP.classList.add('tab-active'); tabI.classList.remove('tab-active'); $('portfolioArea').style.display='block'; $('ipoArea').style.display='none'; updateFab('portfolio'); }
-  function showIPOTab(){ tabI.classList.add('tab-active'); tabP.classList.remove('tab-active'); $('portfolioArea').style.display='none'; $('ipoArea').style.display='block'; updateFab('ipo'); }
-  tabP.addEventListener('click', showPortfolioTab);
-  tabI.addEventListener('click', showIPOTab);
+  const usernameEl = $('username'), pinEl = $('pin');
 
-  // auth
-  const usernameEl=$('username'), pinEl=$('pin');
-  $('btnRegister').addEventListener('click', ()=>{ const u=usernameEl.value.trim(); const p=pinEl.value.trim(); if(!u||!p){ $('authMsg').textContent='Enter username and PIN'; return;} if(p.length<4){ $('authMsg').textContent='PIN must be 4 digits'; return;} const users=loadUsers(); if(users[u]){ $('authMsg').textContent='Username exists'; return;} users[u]=btoa(p); saveUsers(users); $('authMsg').style.color='green'; $('authMsg').textContent='Registered — press Login'; setTimeout(()=>$('authMsg').textContent='',2000); });
-  $('btnLogin').addEventListener('click', async ()=>{ const u=usernameEl.value.trim(); const p=pinEl.value.trim(); $('authMsg').textContent=''; if(!u||!p){ $('authMsg').textContent='Enter username and PIN'; return;} const users=loadUsers(); if(users[u] && users[u] === btoa(p)){ currentUser=u; $('displayUser').textContent=u; $('authForm').classList.add('hidden'); $('userPanel').classList.remove('hidden'); $('portfolioCard').classList.remove('hidden'); portfolio = loadPortfolioForUser(currentUser)||[]; renderPortfolio(); const iposRaw = loadIPOForUser(currentUser); ipoData = iposRaw.data || []; if(!iposRaw.ts || (Date.now() - iposRaw.ts) > IPO_DAILY_REFRESH){ await refreshIPOs(); } else { ipoData = filterRelevantIPOs(ipoData); renderIPOs(''); } showPortfolioTab(); if(autoTimer) clearInterval(autoTimer); autoTimer = setInterval(()=>loadAndFetchAll(), AUTO_REFRESH_MS); } else { $('authMsg').textContent='Invalid username or PIN'; } });
+  $('btnRegister').onclick = () => {
+    const u = usernameEl.value.trim(); const pin = pinEl.value.trim();
+    if(!u || !pin){ $('authMsg').textContent = 'Enter username and 4-digit PIN'; return; }
+    if(pin.length < 4){ $('authMsg').textContent = 'PIN must be 4 digits'; return; }
+    const users = loadUsers(); if(users[u]){ $('authMsg').textContent = 'Username exists'; return; }
+    users[u] = btoa(pin); saveUsers(users); $('authMsg').style.color='green'; $('authMsg').textContent='Registered — press Login'; setTimeout(()=>$('authMsg').textContent='',2000);
+  };
 
-  $('btnLogout').addEventListener('click', ()=>{ currentUser=null; portfolio=[]; ipoData=[]; if(autoTimer) clearInterval(autoTimer); $('authForm').classList.remove('hidden'); $('userPanel').classList.add('hidden'); $('portfolioCard').classList.add('hidden'); });
+  $('btnLogin').onclick = () => {
+    const u = usernameEl.value.trim(); const pin = pinEl.value.trim();
+    $('authMsg').textContent = '';
+    if(!u || !pin){ $('authMsg').textContent = 'Enter username and PIN'; return; }
+    const users = loadUsers();
+    if(users[u] && users[u] === btoa(pin)){
+      currentUser = u; $('displayUser').textContent = u; $('authForm').classList.add('hidden'); $('userPanel').classList.remove('hidden'); $('portfolioCard').classList.remove('hidden');
+      loadAndFetchAll();
+      if(autoTimer) clearInterval(autoTimer);
+      autoTimer = setInterval(()=>loadAndFetchAll(), AUTO_REFRESH_MS);
+    } else {
+      $('authMsg').textContent = 'Invalid username or PIN';
+    }
+  };
 
-  // settings PIN
-  $('btnSettings').addEventListener('click', ()=>{ if(!currentUser){ alert('Login first'); return; } $('pinModal').classList.remove('hidden'); $('curPin').value=''; $('newPin').value=''; $('confirmPin').value=''; });
-  $('pinCancel').addEventListener('click', ()=>$('pinModal').classList.add('hidden'));
-  $('pinSave').addEventListener('click', ()=>{ const cur=$('curPin').value.trim(); const nw=$('newPin').value.trim(); const cf=$('confirmPin').value.trim(); if(!cur||!nw||!cf){ alert('Enter all fields'); return;} if(nw.length<4||cf.length<4){ alert('PIN must be 4 digits'); return;} const users=loadUsers(); if(!users[currentUser]||users[currentUser]!==btoa(cur)){ alert('Current PIN incorrect'); return;} if(nw!==cf){ alert('New PIN and confirm do not match'); return;} users[currentUser]=btoa(nw); saveUsers(users); alert('PIN changed'); $('pinModal').classList.add('hidden'); });
+  $('btnLogout').onclick = () => { currentUser = null; portfolio = []; if(autoTimer) clearInterval(autoTimer); $('authForm').classList.remove('hidden'); $('userPanel').classList.add('hidden'); $('portfolioCard').classList.add('hidden'); };
+
+  // settings -> change PIN
+  $('btnSettings').onclick = () => { if(!currentUser){ alert('Login first'); return; } $('pinModal').classList.remove('hidden'); $('curPin').value=''; $('newPin').value=''; $('confirmPin').value=''; };
+  $('pinCancel').onclick = () => $('pinModal').classList.add('hidden');
+  $('pinSave').onclick = () => {
+    const cur = $('curPin').value.trim(); const nw = $('newPin').value.trim(); const cf = $('confirmPin').value.trim();
+    if(!cur||!nw||!cf){ alert('Enter all fields'); return; }
+    if(nw.length<4||cf.length<4){ alert('PIN must be 4 digits'); return; }
+    const users = loadUsers();
+    if(!users[currentUser] || users[currentUser] !== btoa(cur)){ alert('Current PIN incorrect'); return; }
+    if(nw !== cf){ alert('New PIN and confirm do not match'); return; }
+    users[currentUser] = btoa(nw); saveUsers(users); alert('PIN changed'); $('pinModal').classList.add('hidden');
+  };
 
   // theme toggle
-  $('themeToggle').addEventListener('click', ()=>{ const now = document.documentElement.classList.contains('dark')? 'light' : 'dark'; applyTheme(now); });
+  $('themeToggle').onclick = () => { const now = document.documentElement.classList.contains('dark')? 'light' : 'dark'; applyTheme(now); };
 
-  // portfolio add/edit
-  $('btnAdd').addEventListener('click', ()=>{ openAdd(); });
-  $('fabAdd').addEventListener('click', ()=>{ if(tabI.classList.contains('tab-active')) openAddIPO(); else openAdd(); });
-  $('modalCancel').addEventListener('click', ()=>$('modalWrap').classList.add('hidden'));
-  $('modalSave').addEventListener('click', async ()=>{ const s=$('mSymbol').value.trim().toUpperCase(); const q=parseFloat($('mQty').value); const b=parseFloat($('mBuy').value); if(!s||!(q>0)||!(b>0)){ alert('Enter valid values'); return;} const entry={symbol:s,qty:q,buy:b}; if(editIndex===null) portfolio.push(entry); else portfolio[editIndex]=Object.assign(portfolio[editIndex],entry); savePortfolioForUser(currentUser,portfolio); $('modalWrap').classList.add('hidden'); renderPortfolio(); const idx = editIndex===null? portfolio.length-1: editIndex; const p = await fetchPriceSafe(portfolio[idx].symbol); if(p!==null){ portfolio[idx].live = p; savePortfolioForUser(currentUser,portfolio); renderPortfolio(); $('lastUpdated').textContent=new Date().toLocaleString(); $('globalUpdated').textContent=new Date().toLocaleString(); } });
+  // add/edit handlers
+  $('btnAdd').onclick = openAdd;
+  $('fabAdd').onclick = openAdd;
+  $('modalCancel').onclick = () => $('modalWrap').classList.add('hidden');
+  $('modalSave').onclick = async () => {
+    const s = $('mSymbol').value.trim().toUpperCase(); const q = parseFloat($('mQty').value); const b = parseFloat($('mBuy').value);
+    if(!s || !(q>0) || !(b>0)){ alert('Enter valid values'); return; }
+    const entry = { symbol: s, qty: q, buy: b };
+    if(editIndex === null) portfolio.push(entry); else portfolio[editIndex] = Object.assign(portfolio[editIndex], entry);
+    savePortfolioForUser(currentUser, portfolio);
+    $('modalWrap').classList.add('hidden'); renderTable();
+    const idx = (editIndex===null)? portfolio.length-1 : editIndex;
+    const p = await fetchPrice(portfolio[idx].symbol);
+    if(p!==null){ portfolio[idx].live = p; savePortfolioForUser(currentUser, portfolio); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); }
+  };
 
-  // ipo modal
-  $('ipoCancel').addEventListener('click', ()=>$('ipoModal').classList.add('hidden'));
-  $('ipoSave').addEventListener('click', ()=>{ const comp=$('iCompany').value.trim(); const issue=$('iIssue').value.trim(); const gmp=toNum($('iGmp').value); const open=$('iOpen').value; const close=$('iClose').value; const listing=$('iListing').value; if(!comp){ alert('Enter company name'); return;} const obj={company:comp,issue:issue,gmp:gmp===null?null:gmp,open:open||null,close:close||null,listing:listing||null,status:'Manual'}; if(window.currentIpoEdit===null) ipoData.push(obj); else ipoData[window.currentIpoEdit]=obj; saveIPOForUser(currentUser,ipoData); $('ipoModal').classList.add('hidden'); renderIPOs($('ipoSearch').value); });
+  // refresh all
+  $('btnFetchAll').onclick = async () => { $('statusMsg').textContent = 'Refreshing...'; await loadAndFetchAll(); $('statusMsg').textContent = 'Prices updated'; };
 
-  // ipo refresh/import/export/search
-  $('btnIpoRefresh').addEventListener('click', async ()=>{ await refreshIPOs(); });
-  $('btnExportIpo').addEventListener('click', ()=>{ if(!currentUser){ alert('Login first'); return;} const blob=new Blob([JSON.stringify(ipoData,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=currentUser+'-ipos.json'; a.click(); URL.revokeObjectURL(url); });
-  $('btnImportIpo').addEventListener('click', ()=>{ const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json'; inp.onchange = e => { const f = e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload = ()=>{ try{ const d=JSON.parse(r.result); if(Array.isArray(d)){ ipoData = d; saveIPOForUser(currentUser, ipoData); renderIPOs(''); alert('Imported IPOs'); } else alert('Invalid JSON'); }catch(err){ alert('Invalid JSON'); } }; r.readAsText(f); }; inp.click(); });
-  $('ipoSearch').addEventListener('input', e=> renderIPOs(e.target.value));
+  // import/export
+  $('btnExport').onclick = () => {
+    if(!currentUser){ alert('Login first'); return; }
+    const data = loadPortfolioForUser(currentUser)||[]; const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = currentUser + '-portfolio.json'; a.click(); URL.revokeObjectURL(url);
+  };
+  $('btnImport').onclick = () => $('fileInput').click();
+  $('fileInput').onchange = e => {
+    const f = e.target.files[0]; if(!f) return; const r = new FileReader();
+    r.onload = () => { try{ const d = JSON.parse(r.result); if(Array.isArray(d)){ portfolio = d; savePortfolioForUser(currentUser, portfolio); renderTable(); alert('Imported'); } else alert('Invalid JSON'); } catch(err){ alert('Invalid JSON'); } };
+    r.readAsText(f);
+  };
 
-  // portfolio import/export & refresh
-  $('btnExport').addEventListener('click', ()=>{ if(!currentUser){ alert('Login first'); return;} const data = loadPortfolioForUser(currentUser)||[]; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=currentUser+'-portfolio.json'; a.click(); URL.revokeObjectURL(url); });
-  $('btnImport').addEventListener('click', ()=>{ $('fileInput').click(); });
-  $('fileInput').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload = ()=>{ try{ const d=JSON.parse(r.result); if(Array.isArray(d)){ portfolio=d; savePortfolioForUser(currentUser,portfolio); renderPortfolio(); alert('Imported'); } else alert('Invalid JSON'); }catch(err){ alert('Invalid JSON'); } }; r.readAsText(f); });
-  $('btnFetchAll').addEventListener('click', async ()=>{ $('statusMsg').textContent='Refreshing...'; await loadAndFetchAll(); $('statusMsg').textContent='Prices updated'; });
+  // prevent submit
+  $('authForm').addEventListener('submit', e => e.preventDefault());
 
-  // helper: show/hide portfolioCard after login
-  function showAfterLogin(){ $('userPanel').classList.remove('hidden'); $('portfolioCard').classList.remove('hidden'); }
-
-  // FAB logic
-  function updateFab(tab='portfolio'){ if(window.innerWidth < 768){ $('fabAdd').classList.remove('hidden'); $('fabAdd').setAttribute('title', tab==='ipo' ? 'Add IPO' : 'Add stock'); } else { $('fabAdd').classList.add('hidden'); } }
-  updateFab(); window.addEventListener('resize', ()=>updateFab());
-
-  // initial UI
-  showAfterLogin(); // keep controls visible for dev; portfolioCard remains hidden until login (we hide now)
-  $('portfolioCard').classList.add('hidden');
-
+  // initial UI state, FAB logic and theme
+  const pref = localStorage.getItem(THEME_KEY) || 'light'; applyTheme(pref);
+  function updateFAB(){ if(window.innerWidth < 768){ $('fabAdd').classList.remove('hidden'); } else { $('fabAdd').classList.add('hidden'); } }
+  updateFAB(); window.addEventListener('resize', updateFAB);
 });
 </script>
 </body>
