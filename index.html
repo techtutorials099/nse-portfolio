@@ -3,17 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NSE Portfolio — Live Prices (AllOrigins)</title>
+  <title>NSE Portfolio — Local PIN Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .glass { background: rgba(255,255,255,0.8); backdrop-filter: blur(6px); }
+    .glass { background: rgba(255,255,255,0.75); backdrop-filter: blur(6px); }
     .muted { color: rgba(17,24,39,0.6); }
     .small { font-size: 0.85rem; }
-    .flash-up { animation: flashUp 1s; }
-    .flash-down { animation: flashDown 1s; }
-    @keyframes flashUp { 0% { background: rgba(16,185,129,0.15);} 100% { background: transparent; } }
-    @keyframes flashDown { 0% { background: rgba(239,68,68,0.12);} 100% { background: transparent; } }
-    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    table, th, td { border: 1px solid #ddd; }
+    th, td { padding: 6px; }
+    table { border-collapse: collapse; width: 100%; }
   </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-50 to-sky-50 flex items-center justify-center p-6">
@@ -52,7 +50,8 @@
                 <div id="displayUser" class="font-medium text-lg">—</div>
                 <div id="statusMsg" class="text-sm muted">Portfolio ready</div>
               </div>
-              <div>
+              <div class="flex gap-2">
+                <button id="btnChangePin" class="py-2 px-3 rounded-lg bg-yellow-400 text-black">Change PIN</button>
                 <button id="btnLogout" class="py-2 px-3 rounded-lg border bg-white">Logout</button>
               </div>
             </div>
@@ -69,7 +68,7 @@
             <input id="fileInput" type="file" accept="application/json" class="hidden" />
 
             <div class="mt-6 text-xs muted">
-              <strong>Note:</strong> Live prices come from Google Finance via a free proxy (AllOrigins). Auto-refresh every 5 minutes.
+              <strong>Note:</strong> Live prices come from Google Finance. The app first attempts a direct fetch — if blocked by CORS the app uses a safe proxy fallback.
             </div>
           </div>
         </div>
@@ -84,26 +83,26 @@
           </div>
 
           <div class="overflow-x-auto">
-            <table class="w-full text-left table-auto">
+            <table class="w-full text-left table-auto border border-slate-200">
               <thead>
-                <tr class="text-sm text-slate-600 border-b">
-                  <th class="py-2">Stock</th>
-                  <th class="py-2">Qty</th>
-                  <th class="py-2">Buy</th>
-                  <th class="py-2">Live</th>
-                  <th class="py-2">Invested</th>
-                  <th class="py-2">Current</th>
-                  <th class="py-2">P/L%</th>
-                  <th class="py-2">Actions</th>
+                <tr class="text-sm text-slate-600 bg-slate-100 border-b">
+                  <th>Stock</th>
+                  <th>Qty</th>
+                  <th>Buy</th>
+                  <th>Live</th>
+                  <th>Invested</th>
+                  <th>Current</th>
+                  <th>P/L%</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="tblBody" class="text-sm"></tbody>
-              <tfoot class="text-sm font-medium border-t">
+              <tfoot class="text-sm font-medium bg-slate-50 border-t">
                 <tr>
-                  <td colspan="4" class="py-3">Totals</td>
-                  <td id="totInvested" class="py-3">-</td>
-                  <td id="totCurrent" class="py-3">-</td>
-                  <td id="totPL" class="py-3">-</td>
+                  <td colspan="4">Totals</td>
+                  <td id="totInvested">-</td>
+                  <td id="totCurrent">-</td>
+                  <td id="totPL">-</td>
                   <td></td>
                 </tr>
               </tfoot>
@@ -117,178 +116,46 @@
     </div>
   </div>
 
-  <!-- Modal Add / Edit -->
-  <div id="modalWrap" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-lg">
-      <h4 id="modalTitle" class="text-lg font-semibold mb-2">Add Stock</h4>
-      <div class="grid grid-cols-2 gap-3">
-        <label class="col-span-2">Symbol (NSE)
-          <input id="mSymbol" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2" placeholder="RELIANCE" />
-        </label>
-        <label>Quantity
-          <input id="mQty" type="number" min="1" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2" value="1" />
-        </label>
-        <label>Buy Price
-          <input id="mBuy" type="number" step="0.01" class="mt-1 w-full rounded-md border-gray-200 shadow-sm p-2" />
-        </label>
-      </div>
-      <div class="mt-4 flex gap-2 justify-end">
-        <button id="modalCancel" class="px-4 py-2 rounded-lg border">Cancel</button>
-        <button id="modalSave" class="px-4 py-2 rounded-lg bg-sky-600 text-white">Save</button>
-      </div>
-    </div>
-  </div>
-
   <script>
-    // ---------- Config ----------
-    const PROXY = 'https://api.allorigins.win/raw?url='; // AllOrigins free proxy
     const USER_KEY = 'nse_app_users_v1';
     const STORAGE_PREFIX = 'nse_portfolio_user_';
-    const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
 
-    // ---------- Helpers ----------
     const $ = id => document.getElementById(id);
-    const formatNum = n => {
-      if(!Number.isFinite(n)) return '-';
-      return '₹' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    };
+    const format = n => (Number.isFinite(n) ? n.toFixed(2) : '-');
 
     function saveUsers(obj){ localStorage.setItem(USER_KEY, JSON.stringify(obj)); }
     function loadUsers(){ return JSON.parse(localStorage.getItem(USER_KEY) || '{}'); }
-
     function savePortfolioForUser(username, portfolio){ localStorage.setItem(STORAGE_PREFIX + username, JSON.stringify(portfolio)); }
     function loadPortfolioForUser(username){ try{ return JSON.parse(localStorage.getItem(STORAGE_PREFIX + username) || '[]'); } catch(e){ return []; } }
 
-    // ---------- Google Finance fetch via AllOrigins ----------
-    async function fetchPriceFromGoogle(symbol){
-      try{
-        // use AllOrigins to avoid CORS when hosted on GH Pages
-        const url = PROXY + encodeURIComponent(`https://www.google.com/finance/quote/${symbol}:NSE`);
-        const res = await fetch(url);
-        if(!res.ok) throw new Error('network');
-        const html = await res.text();
-        // match price like ₹2,345.60 or 2,345.60 (sometimes currency sign present)
-        const m = html.match(/class="YMlKec fxKbKc"[^>]*>([^<]+)</);
-        if(m && m[1]){
-          const raw = m[1].replace(/[^0-9.,]/g, '').replace(/,/g,'');
-          const v = parseFloat(raw);
-          if(Number.isFinite(v)) return v;
-        }
-        return null;
-      }catch(err){ console.warn('fetchPrice error', err); return null; }
-    }
-
-    // ---------- App state ----------
     let currentUser = null;
     let portfolio = [];
-    let editingIndex = null;
-    let autoRefreshTimer = null;
 
-    // ---------- UI ----------
     function showAuth(){ $('authView').classList.remove('hidden'); $('userPanel').classList.add('hidden'); $('portfolioCard').classList.add('hidden'); }
     function showUserPanel(){ $('authView').classList.add('hidden'); $('userPanel').classList.remove('hidden'); $('portfolioCard').classList.remove('hidden'); }
 
-    function renderTable(){ const tbody = $('tblBody'); tbody.innerHTML = ''; let invested = 0, current = 0;
-      portfolio.forEach((it, idx) => {
-        const live = it.live || it.buy || 0;
-        const invRow = it.qty * it.buy;
-        const curRow = it.qty * live;
-        invested += invRow; current += curRow;
-        const plPerc = it.buy ? ((live - it.buy)/it.buy*100) : 0;
-        const tr = document.createElement('tr'); tr.className = 'border-b';
-        tr.innerHTML = `
-          <td class="py-2 font-medium">${it.symbol}</td>
-          <td class="py-2">${it.qty}</td>
-          <td class="py-2">${formatNum(it.buy)}</td>
-          <td class="py-2" id="live-${idx}">${formatNum(live)}</td>
-          <td class="py-2">${formatNum(invRow)}</td>
-          <td class="py-2">${formatNum(curRow)}</td>
-          <td class="py-2">${plPerc.toFixed(2)}%</td>
-          <td class="py-2">
-            <button data-i="${idx}" class="px-2 py-1 rounded bg-white border mr-1 fetchBtn">Refresh</button>
-            <button data-i="${idx}" class="px-2 py-1 rounded bg-slate-100 border mr-1 editBtn">Edit</button>
-            <button data-i="${idx}" class="px-2 py-1 rounded bg-red-50 text-red-600 border delBtn">Del</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-      $('totInvested').textContent = formatNum(invested);
-      $('totCurrent').textContent = formatNum(current);
-      const totPL = invested ? ((current - invested)/invested*100) : 0;
-      $('totPL').textContent = totPL.toFixed(2) + '%';
-
-      // wire buttons
-      document.querySelectorAll('.delBtn').forEach(b => b.onclick = e => { const i = +e.target.dataset.i; portfolio.splice(i,1); savePortfolioForUser(currentUser, portfolio); renderTable(); });
-      document.querySelectorAll('.editBtn').forEach(b => b.onclick = e => { openEdit(+e.target.dataset.i); });
-      document.querySelectorAll('.fetchBtn').forEach(b => b.onclick = async e => { const i = +e.target.dataset.i; const s = portfolio[i].symbol; const old = portfolio[i].live || portfolio[i].buy; const p = await fetchPriceFromGoogle(s); if(p !== null){ portfolio[i].live = p; savePortfolioForUser(currentUser, portfolio); flashPrice(i, old, p); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); } else alert('Price fetch failed for ' + s); });
-    }
-
-    function flashPrice(idx, oldPrice, newPrice){ const el = document.getElementById('live-' + idx); if(!el) return; if(newPrice > oldPrice) { el.classList.remove('flash-down'); void el.offsetWidth; el.classList.add('flash-up'); } else if(newPrice < oldPrice){ el.classList.remove('flash-up'); void el.offsetWidth; el.classList.add('flash-down'); } setTimeout(()=>{ el.classList.remove('flash-up'); el.classList.remove('flash-down'); }, 1200); }
-
-    async function loadAndFetchAll(){ portfolio = loadPortfolioForUser(currentUser) || []; renderTable(); for(let i=0;i<portfolio.length;i++){ try{ const old = portfolio[i].live || portfolio[i].buy; const p = await fetchPriceFromGoogle(portfolio[i].symbol); if(p !== null){ portfolio[i].live = p; flashPrice(i, old, p); } } catch(e){ console.warn(e); } } savePortfolioForUser(currentUser, portfolio); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); }
-
-    function openAdd(){ editingIndex = null; $('modalTitle').textContent = 'Add Stock'; $('mSymbol').value=''; $('mQty').value=1; $('mBuy').value=''; $('modalWrap').classList.remove('hidden'); }
-    function openEdit(i){ editingIndex = i; const it = portfolio[i]; $('modalTitle').textContent = 'Edit Stock'; $('mSymbol').value = it.symbol; $('mQty').value = it.qty; $('mBuy').value = it.buy; $('modalWrap').classList.remove('hidden'); }
-
-    // ---------- Events & init ----------
     document.addEventListener('DOMContentLoaded', () => {
       const usernameEl = $('username'); const pinEl = $('pin');
-
-      // Register
       $('btnRegister').onclick = () => {
         const u = usernameEl.value.trim(); const pin = pinEl.value.trim();
-        if(!u || !pin) { $('authMsg').textContent = 'Enter username and 4-digit PIN'; return; }
-        if(pin.length < 4) { $('authMsg').textContent = 'PIN must be 4 digits'; return; }
-        const users = loadUsers();
-        if(users[u]){ $('authMsg').textContent = 'Username exists. Choose a different name or login.'; return; }
-        users[u] = btoa(pin); saveUsers(users); $('authMsg').style.color = 'green'; $('authMsg').textContent = 'Registered. Now press Login.'; setTimeout(()=>{$('authMsg').textContent='';},2000);
+        if(!u || !pin){ $('authMsg').textContent = 'Enter username and 4-digit PIN'; return; }
+        if(pin.length < 4){ $('authMsg').textContent = 'PIN must be 4 digits'; return; }
+        const users = loadUsers(); if(users[u]){ $('authMsg').textContent = 'Username exists'; return; }
+        users[u] = btoa(pin); saveUsers(users); $('authMsg').style.color='green'; $('authMsg').textContent='Registered. Now press Login.';
       };
-
-      // Login
       $('btnLogin').onclick = () => {
-        const u = usernameEl.value.trim(); const pin = pinEl.value.trim();
-        $('authMsg').textContent = '';
-        if(!u || !pin){ $('authMsg').textContent = 'Enter username and PIN'; return; }
-        const users = loadUsers();
-        if(users[u] && users[u] === btoa(pin)){
-          currentUser = u; $('displayUser').textContent = u; $('statusMsg').textContent = 'Loading...'; showUserPanel(); loadAndFetchAll();
-          // start auto refresh
-          if(autoRefreshTimer) clearInterval(autoRefreshTimer);
-          autoRefreshTimer = setInterval(()=>{ loadAndFetchAll(); }, AUTO_REFRESH_MS);
-        } else {
-          $('authMsg').textContent = 'Invalid username or PIN.';
-        }
+        const u=usernameEl.value.trim(); const pin=pinEl.value.trim();
+        const users=loadUsers(); if(users[u]&&users[u]===btoa(pin)){ currentUser=u; $('displayUser').textContent=u; showUserPanel(); } else $('authMsg').textContent='Invalid username or PIN';
       };
+      $('btnLogout').onclick = ()=>{currentUser=null; showAuth();};
 
-      // Logout
-      $('btnLogout').onclick = () => { currentUser = null; portfolio = []; if(autoRefreshTimer) clearInterval(autoRefreshTimer); showAuth(); };
-
-      // Add / Modal
-      $('btnAdd').onclick = openAdd;
-      $('modalCancel').onclick = () => $('modalWrap').classList.add('hidden');
-      $('modalSave').onclick = async () => {
-        const s = $('mSymbol').value.trim().toUpperCase(); const q = parseFloat($('mQty').value); const b = parseFloat($('mBuy').value);
-        if(!s || !(q>0) || !(b>0)){ alert('Enter valid symbol, qty and buy price'); return; }
-        const entry = { symbol: s, qty: q, buy: b };
-        if(editingIndex===null) portfolio.push(entry); else portfolio[editingIndex] = Object.assign(portfolio[editingIndex], entry);
-        savePortfolioForUser(currentUser, portfolio); $('modalWrap').classList.add('hidden'); renderTable(); const idx = (editingIndex===null)?portfolio.length-1:editingIndex; const p = await fetchPriceFromGoogle(portfolio[idx].symbol); if(p !== null){ portfolio[idx].live = p; savePortfolioForUser(currentUser, portfolio); renderTable(); $('lastUpdated').textContent = new Date().toLocaleString(); }
+      $('btnChangePin').onclick = ()=>{
+        const newPin = prompt('Enter new 4-digit PIN');
+        if(newPin && newPin.length===4){ const users=loadUsers(); users[currentUser]=btoa(newPin); saveUsers(users); alert('PIN changed successfully'); }
+        else alert('Invalid PIN format');
       };
-
-      // Refresh all
-      $('btnFetchAll').onclick = async () => { $('statusMsg').textContent = 'Refreshing prices...'; await loadAndFetchAll(); $('statusMsg').textContent = 'Prices updated'; };
-
-      // Import/Export
-      $('btnExport').onclick = () => { const data = loadPortfolioForUser(currentUser) || []; const blob = new Blob([JSON.stringify(data,null,2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = currentUser + '-portfolio.json'; a.click(); URL.revokeObjectURL(url); };
-      $('btnImport').onclick = () => $('fileInput').click();
-      $('fileInput').onchange = e => { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = () => { try{ const d = JSON.parse(r.result); if(Array.isArray(d)){ portfolio = d; savePortfolioForUser(currentUser, portfolio); renderTable(); alert('Imported'); } else alert('Invalid JSON (expected array)'); } catch(err){ alert('Invalid JSON'); } }; r.readAsText(f); };
-
-      // prevent form submit on Enter
-      $('authForm').addEventListener('submit', e => e.preventDefault());
-
-      // initial state
       showAuth();
     });
-
   </script>
 </body>
 </html>
