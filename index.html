@@ -1,155 +1,151 @@
 <!doctype html>
-<html lang="en" class="light">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NSE Portfolio — Full Suite (Cloud + IPO + Nifty + Dark)</title>
-  <meta name="description" content="NSE Portfolio: portfolio + IPOs + Nifty50, repo JSON sync, 1-min price updates, persistent login." />
+  <title>NSE Portfolio — Full Suite (Live Nifty + IPO + Wishlist)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root{--bg1:#eef9f6;--bg2:#f1f8ff;--card:rgba(255,255,255,0.96);--muted:rgba(17,24,39,0.6)}
     .dark{--bg1:#071020;--bg2:#08111a;--card:rgba(10,16,22,0.86);--muted:rgba(203,213,225,0.7)}
-    body{background:linear-gradient(135deg,var(--bg1),var(--bg2));min-height:100vh;font-family:Inter,system-ui,Roboto,Arial;margin:0;padding:16px}
+    body{background:linear-gradient(135deg,var(--bg1),var(--bg2));min-height:100vh;font-family:Inter,system-ui,Roboto,Arial;margin:0;padding:18px}
     .glass{background:var(--card);backdrop-filter:blur(6px);border-radius:12px}
     .muted{color:var(--muted)}
     table{border-collapse:collapse;width:100%;font-size:0.95rem}
     th,td{padding:10px 8px;text-align:left;border-bottom:1px solid rgba(0,0,0,0.06)}
     thead th{background:linear-gradient(90deg,rgba(224,235,255,0.95),rgba(243,238,255,0.95));position:sticky;top:0}
-    tbody tr:nth-child(odd){background:linear-gradient(90deg,rgba(255,255,255,0.015),rgba(255,255,255,0))}
-    tfoot td{font-weight:700;background:linear-gradient(90deg,rgba(199,236,234,0.95),rgba(224,235,255,0.95))}
     .profit{color:#0f9d58;font-weight:600}
     .loss{color:#e53935;font-weight:600}
-    .tab { padding:8px 12px; border-radius:8px; cursor:pointer; }
-    .tab.active{ background:linear-gradient(90deg,#dbeefe,#f0efff); font-weight:600; }
-    .fab{position:fixed;right:18px;bottom:18px;width:56px;height:56px;border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(2,6,23,0.12)}
-    .small{font-size:0.85rem}
-    .codebox{font-family:ui-monospace,monospace;background:rgba(0,0,0,0.04);padding:6px;border-radius:6px}
-    @media(min-width:768px){.sticky-aside{position:sticky;top:28px}}
+    .hidden-sm{display:none}
+    @media(min-width:768px){.hidden-sm{display:block}}
   </style>
 </head>
 <body>
-  <div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-6">
-    <aside class="md:w-4/12">
-      <div class="glass p-5 shadow sticky-aside">
-        <h1 class="text-xl font-semibold">NSE Portfolio</h1>
-        <p class="muted text-sm mt-1">Full suite: Portfolio + IPOs + Nifty50 · Repo JSON sync (techtutorials099/nse-portfolio)</p>
+  <div class="max-w-7xl mx-auto grid grid-cols-12 gap-6">
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="col-span-12 md:col-span-4">
+      <div class="glass p-5 shadow sticky top-6">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h1 class="text-xl font-semibold">NSE Portfolio</h1>
+            <div class="muted text-sm">Live Nifty · IPOs · Wishlist</div>
+          </div>
+          <div>
+            <button id="btnToggleSidebar" class="px-2 py-1 rounded border">⧉</button>
+          </div>
+        </div>
 
-        <form id="authForm" class="mt-4 space-y-3" onsubmit="return false;">
-          <label class="block text-sm">Username
-            <input id="username" class="mt-1 w-full rounded-md border border-gray-200 p-2" placeholder="yourname" autocomplete="username" />
-          </label>
-          <label class="block text-sm">4-digit PIN
-            <input id="pin" type="password" inputmode="numeric" maxlength="4" class="mt-1 w-full rounded-md border border-gray-200 p-2" placeholder="1234" />
-          </label>
-          <div class="flex gap-2">
-            <button id="btnRegister" type="button" class="flex-1 py-2 rounded-md bg-emerald-500 text-white">Register</button>
-            <button id="btnLogin" type="button" class="flex-1 py-2 rounded-md border">Login</button>
+        <!-- AUTH -->
+        <div id="authView" class="mt-4">
+          <h3 class="font-medium">Login</h3>
+          <div class="text-sm muted mb-2">Use a local username + 4-digit PIN</div>
+          <input id="username" placeholder="username" class="w-full p-2 rounded border mb-2" />
+          <input id="pin" placeholder="4-digit PIN" inputmode="numeric" maxlength="4" class="w-full p-2 rounded border mb-2" />
+          <div class="flex gap-2 mb-2">
+            <button id="btnRegister" class="flex-1 py-2 rounded bg-emerald-500 text-white">Register</button>
+            <button id="btnLogin" class="flex-1 py-2 rounded border">Login</button>
           </div>
           <div id="authMsg" class="text-sm text-red-600"></div>
-        </form>
+        </div>
 
+        <!-- USER PANEL -->
         <div id="userPanel" class="hidden mt-4">
           <div class="flex items-center justify-between">
             <div>
               <div id="displayUser" class="font-medium"></div>
               <div id="statusMsg" class="muted text-sm">Ready</div>
             </div>
-            <div class="flex items-center gap-2">
-              <button id="themeToggle" aria-label="Toggle theme" class="p-2 rounded-md border">🌙</button>
-              <button id="btnSettings" aria-label="Settings" class="p-2 rounded-md border">⚙️</button>
-              <button id="btnLogout" class="py-2 px-3 rounded-md border">Logout</button>
+            <div class="flex gap-2">
+              <button id="btnChangePin" class="px-2 py-1 rounded bg-yellow-400">Change PIN</button>
+              <button id="btnLogout" class="px-2 py-1 rounded border">Logout</button>
             </div>
           </div>
 
           <div class="mt-4">
             <div class="flex gap-2">
-              <div id="tabPortfolio" class="tab active">Portfolio</div>
-              <div id="tabIPOs" class="tab">IPOs</div>
-              <div id="tabNifty" class="tab">Nifty 50</div>
+              <button id="tabBtnPortfolio" class="py-2 px-3 rounded bg-sky-600 text-white flex-1">Portfolio</button>
+              <button id="tabBtnIpos" class="py-2 px-3 rounded border flex-1">IPOs</button>
+            </div>
+            <div class="flex gap-2 mt-2">
+              <button id="tabBtnWishlist" class="py-2 px-3 rounded border flex-1">Wishlist</button>
+              <button id="tabBtnNifty" class="py-2 px-3 rounded border flex-1">Nifty 50</button>
             </div>
 
             <div class="mt-4 space-y-2">
-              <button id="btnAdd" class="w-full py-2 rounded-md bg-sky-500 text-white">Add item (contextual)</button>
-              <button id="btnRefreshPage" class="w-full py-2 rounded-md border">Refresh (no logout)</button>
-              <button id="btnFetchAll" class="w-full py-2 rounded-md border">Refresh prices</button>
-              <div class="flex gap-2 mt-2">
-                <button id="btnImport" class="flex-1 py-2 rounded-md border">Import</button>
-                <button id="btnExport" class="flex-1 py-2 rounded-md border">Export</button>
+              <button id="btnAdd" class="w-full py-2 rounded bg-sky-500 text-white">Add (contextual)</button>
+              <button id="btnRefreshPrices" class="w-full py-2 rounded border">Refresh prices</button>
+              <div class="flex gap-2">
+                <button id="btnImport" class="flex-1 py-2 rounded border">Import</button>
+                <button id="btnExport" class="flex-1 py-2 rounded border">Export</button>
               </div>
             </div>
-          </div>
 
-          <!-- Repo Sync -->
-          <div class="mt-4 p-3 border rounded-md">
-            <div class="flex items-center justify-between">
-              <div class="small font-medium">Repo Sync</div>
-              <div class="small muted">techtutorials099/nse-portfolio</div>
-            </div>
-            <div class="mt-2 space-y-2 small">
-              <div><label class="block text-xs">Repo (owner/repo)</label><input id="ghRepo" class="mt-1 w-full rounded-md border p-2" value="techtutorials099/nse-portfolio" /></div>
-              <div><label class="block text-xs">File path</label><input id="ghPath" class="mt-1 w-full rounded-md border p-2" value="portfolio.json" /></div>
-              <div><label class="block text-xs">Personal Access Token (repo scope)</label><input id="ghToken" class="mt-1 w-full rounded-md border p-2" placeholder="paste token (stored locally)" /></div>
-              <div class="flex gap-2 mt-2">
-                <button id="btnRepoConnect" class="flex-1 py-1 rounded-md bg-green-500 text-white small">Connect</button>
-                <button id="btnRepoSync" class="flex-1 py-1 rounded-md border small">Sync Now / Load (dblclick)</button>
-              </div>
-              <div class="flex items-center gap-2 mt-1"><input id="autoRepoSync" type="checkbox" /><label for="autoRepoSync" class="small muted">Auto-sync on change</label></div>
-              <div id="repoMsg" class="small text-xs muted mt-1"></div>
+            <div class="mt-4 p-3 border rounded text-sm muted">
+              <div>Repo sync: <input id="ghRepo" class="w-full p-1 rounded border mt-1" placeholder="owner/repo (optional)" /></div>
+              <div class="mt-2">File path: <input id="ghPath" class="w-full p-1 rounded border mt-1" placeholder="portfolio.json" value="portfolio.json" /></div>
+              <div class="mt-2">Token: <input id="ghToken" class="w-full p-1 rounded border mt-1" placeholder="GitHub PAT (stored locally)" /></div>
+              <div class="flex gap-2 mt-2"><button id="btnRepoConnect" class="flex-1 py-1 rounded bg-green-500 text-white">Save Token</button><button id="btnRepoSync" class="flex-1 py-1 rounded border">Sync Now</button></div>
+              <div id="repoMsg" class="text-xs muted mt-2"></div>
             </div>
           </div>
-
-          <input id="fileInput" type="file" accept="application/json" class="hidden" />
-          <div class="mt-3 text-xs muted">All prices update every 1 minute. Data saved locally + optional repo sync.</div>
         </div>
       </div>
     </aside>
 
-    <main class="md:w-8/12">
-      <div id="contentCard" class="glass p-5 shadow hidden">
-        <div id="panelPortfolio">
+    <!-- MAIN -->
+    <main class="col-span-12 md:col-span-8">
+      <div class="glass p-4 shadow">
+        <!-- Tabs container -->
+        <div id="portfolioTab" class="hidden">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-semibold">Holdings</h2>
             <div class="muted text-sm">Updated: <span id="lastUpdated">-</span></div>
           </div>
           <div class="overflow-auto">
-            <table id="portfolioTable" class="min-w-[720px]">
-              <thead><tr><th>Stock</th><th>Qty</th><th>Buy ₹</th><th>Live ₹</th><th>Invested ₹</th><th>Current ₹</th><th>P&L ₹</th><th>P/L %</th><th>Actions</th></tr></thead>
+            <table class="w-full text-left table-auto">
+              <thead><tr><th>Stock</th><th>Qty</th><th>Buy ₹</th><th>Live ₹</th><th>Invested</th><th>Current</th><th>P&L ₹</th><th>P/L %</th><th>Actions</th></tr></thead>
               <tbody id="tblBody"></tbody>
               <tfoot><tr><td colspan="4">Totals</td><td id="totInvested">-</td><td id="totCurrent">-</td><td id="totPLRs">-</td><td id="totPLPerc">-</td><td></td></tr></tfoot>
             </table>
           </div>
         </div>
 
-        <div id="panelIPOs" class="hidden">
+        <div id="iposTab" class="hidden">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-semibold">IPOs — Current & Upcoming</h2>
-            <div class="muted text-sm">Manage IPO wishlist</div>
+            <h2 class="text-lg font-semibold">IPOs — Current & Upcoming (India)</h2>
+            <div class="muted text-sm">Source: Chittorgarh (GMP)</div>
           </div>
-          <div class="mb-3">
-            <button id="btnAddIpo" class="px-3 py-2 rounded-md bg-indigo-500 text-white">Add IPO</button>
-            <button id="btnFetchIpos" class="px-3 py-2 rounded-md border">Fetch sample list</button>
-            <button id="btnImportIpo" class="px-3 py-2 rounded-md border">Import IPOs</button>
+          <div class="mb-3 flex gap-2">
+            <button id="btnFetchIpos" class="py-2 px-3 rounded border">Fetch IPOs</button>
+            <button id="btnImportIpos" class="py-2 px-3 rounded border">Import IPOs</button>
           </div>
           <div class="overflow-auto">
-            <table id="ipoTable" class="min-w-[720px]">
-              <thead><tr><th>Title</th><th>Start</th><th>End</th><th>Listing</th><th>GMP</th><th>Wishlist</th><th>Actions</th></tr></thead>
-              <tbody id="ipoBody"></tbody>
+            <table class="w-full table-auto">
+              <thead><tr><th>Company</th><th>Open</th><th>Close</th><th>Listing</th><th>GMP</th><th>Wishlist</th></tr></thead>
+              <tbody id="ipoTableBody"></tbody>
             </table>
           </div>
         </div>
 
-        <div id="panelNifty" class="hidden">
+        <div id="wishlistTab" class="hidden">
+          <h2 class="text-lg font-semibold mb-2">Wishlist</h2>
+          <div class="overflow-auto">
+            <table class="w-full table-auto">
+              <thead><tr><th>Item</th><th>Type</th><th>Remove</th></tr></thead>
+              <tbody id="wishlistBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="niftyTab" class="hidden">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-semibold">Nifty 50</h2>
-            <div class="muted text-sm">Daily O/H/L/C, CMP, 52-week high/low</div>
+            <div class="muted text-sm">Live OHLC, CMP, 52W high/low</div>
           </div>
-          <div class="mb-3">
-            <button id="btnFetchNifty" class="px-3 py-2 rounded-md border">Refresh Nifty Data</button>
-            <button id="btnAddWishlistFromNifty" class="px-3 py-2 rounded-md bg-sky-500 text-white">Add selected to Wishlist</button>
-          </div>
+          <div class="mb-3"><button id="btnFetchNifty" class="py-2 px-3 rounded bg-sky-600 text-white">Refresh Nifty Data</button></div>
           <div class="overflow-auto">
-            <table id="niftyTable" class="min-w-[900px]">
-              <thead><tr><th>Select</th><th>Symbol</th><th>CMP</th><th>Open</th><th>High</th><th>Low</th><th>Prev Close</th><th>52W High</th><th>52W Low</th><th>Actions</th></tr></thead>
+            <table class="w-full table-auto">
+              <thead><tr><th>Symbol</th><th>Open</th><th>High</th><th>Low</th><th>Prev Close</th><th>CMP</th><th>52W H</th><th>52W L</th><th>Add</th></tr></thead>
               <tbody id="niftyBody"></tbody>
             </table>
           </div>
@@ -159,426 +155,221 @@
     </main>
   </div>
 
-  <button id="fabAdd" class="fab bg-sky-500 text-white hidden" title="Add">+</button>
+  <input id="fileInput" type="file" accept="application/json" class="hidden" />
 
-  <!-- Add/Edit Modals (reused) -->
-  <div id="modalWrap" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
-    <div class="bg-white dark:bg-gray-800 rounded-xl p-5 max-w-md w-full">
-      <h3 id="modalTitle" class="font-semibold mb-2">Add item</h3>
-      <div id="modalBody" class="space-y-3"></div>
-      <div class="mt-4 flex justify-end gap-2">
-        <button id="modalCancel" class="px-4 py-2 rounded-md border">Cancel</button>
-        <button id="modalSave" class="px-4 py-2 rounded-md bg-sky-500 text-white">Save</button>
-      </div>
-    </div>
-  </div>
+  <script>
+  // === App configuration & storage ===
+  const PROXY = 'https://api.allorigins.win/raw?url='; // public proxy used for CORS
+  const CURRENT_USER_KEY = 'nse_current_user_v3';
+  const STORAGE_PREFIX = 'nse_app_state_v1_'; // final: STORAGE_PREFIX + username => unified JSON
 
-<script>
-/* Full working NSE Portfolio v6
-   - Persistent login (saved to localStorage)
-   - Full app state (portfolio, ipos, wishlist, nifty) saved per user
-   - Repo JSON sync (read/write full state)
-   - Prices updated every 60 seconds (Yahoo via proxy)
-   - Tabs and actions
-*/
+  const $ = id => document.getElementById(id);
 
-const PROXY = 'https://api.allorigins.win/raw?url=';
-const USER_KEY = 'nse_app_users_v3';
-const STORAGE_PREFIX = 'nse_portfolio_repo_user_v3_';
-const REPO_META_KEY = 'nse_repo_meta_v3';
-const CURRENT_USER_KEY = 'nse_current_user_v3';
-const AUTO_REFRESH_MS = 60 * 1000; // 1 minute
+  // default structure
+  function emptyState(){ return { portfolio: [], ipos: [], wishlist: [], nifty: {} }; }
 
-const DEFAULT_NIFTY = [
-  "TCS","INFY","HDFCBANK","RELIANCE","HINDUNILVR","ICICIBANK","KOTAKBANK","HDFC","LT","ITC",
-  "SBIN","AXISBANK","BAJAJ-AUTO","MARUTI","BHARTIARTL","ONGC","POWERGRID","NTPC","ULTRACEMCO","HCLTECH",
-  "WIPRO","ADANIENT","TECHM","TITAN","HDFCLIFE","BRITANNIA","EICHERMOT","INDUSINDBK","BPCL","TATASTEEL",
-  "M&M","GRASIM","BAJFINANCE","SUNPHARMA","DRREDDY","JSWSTEEL","ADANIPORTS","SHREECEM","CIPLA","DIVISLAB",
-  "COALINDIA","SBILIFE","UPL","HINDALCO","GODREJPROP","LTIM","PIDILITIND"
-];
+  function saveStateForUser(user, state){ localStorage.setItem(STORAGE_PREFIX + user, JSON.stringify(state)); }
+  function loadStateForUser(user){ try{ return JSON.parse(localStorage.getItem(STORAGE_PREFIX + user) || JSON.stringify(emptyState())); }catch(e){ return emptyState(); } }
 
-const $ = id => document.getElementById(id);
+  // user credentials
+  const USER_KEY = 'nse_app_users_v3';
+  function saveUsers(u){ localStorage.setItem(USER_KEY, JSON.stringify(u)); }
+  function loadUsers(){ return JSON.parse(localStorage.getItem(USER_KEY) || '{}'); }
 
-// storage helpers
-function saveUsers(u){ localStorage.setItem(USER_KEY, JSON.stringify(u)); }
-function loadUsers(){ return JSON.parse(localStorage.getItem(USER_KEY)||'{}'); }
-function saveAppStateForUser(username, state){ localStorage.setItem(STORAGE_PREFIX+username, JSON.stringify(state)); }
-function loadAppStateForUser(username){ try{return JSON.parse(localStorage.getItem(STORAGE_PREFIX+username)||'{"portfolio":[],"ipos":[],"wishlist":[],"nifty":{}}')}catch(e){return {portfolio:[],ipos:[],wishlist:[],nifty:{}}} }
-function saveRepoMeta(m){ localStorage.setItem(REPO_META_KEY, JSON.stringify(m)); }
-function loadRepoMeta(){ try{return JSON.parse(localStorage.getItem(REPO_META_KEY)||'{}')}catch(e){return {}} }
+  // small format helpers
+  function fmt(n){ return Number.isFinite(n) ? '₹' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '-'; }
 
-// utf8/base64 helpers for GitHub API
-function utf8_to_b64(str){ return btoa(unescape(encodeURIComponent(str))); }
-function b64_to_utf8(b){ return decodeURIComponent(escape(atob(b))); }
+  // application state
+  let currentUser = null;
+  let appState = emptyState();
+  let refreshTimer = null;
 
-async function getFileMeta(owner, repo, path, token){
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`;
-  const headers = token? { 'Authorization': 'token ' + token } : {};
-  const res = await fetch(url, { headers });
-  if(res.status===404) return null;
-  if(!res.ok) throw new Error('Fetch file failed: ' + res.status);
-  return await res.json();
-}
-async function createOrUpdateFile(owner, repo, path, token, contentStr, sha){
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`;
-  const body = { message: "Update portfolio state from NSE Portfolio app", content: utf8_to_b64(contentStr) };
-  if(sha) body.sha = sha;
-  const res = await fetch(url, { method: 'PUT', headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if(!res.ok) throw new Error('Update file failed: ' + res.status + ' ' + await res.text());
-  return await res.json();
-}
+  // show/hide sidebar toggle
+  $('btnToggleSidebar').onclick = ()=>{ const s=$('sidebar'); s.classList.toggle('hidden'); };
 
-// Yahoo finance quote via proxy
-async function fetchQuoteYahoo(symbol){
-  try{
-    const q = symbol.includes('.NS') ? symbol : symbol + ".NS";
-    const url = PROXY + encodeURIComponent(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${q}`);
-    const res = await fetch(url);
-    if(!res.ok) throw new Error('network');
-    const text = await res.text();
-    const data = JSON.parse(text);
-    if(data && data.quoteResponse && data.quoteResponse.result && data.quoteResponse.result.length) return data.quoteResponse.result[0];
+  // TAB switch helpers
+  function showTab(id){ ['portfolioTab','iposTab','wishlistTab','niftyTab'].forEach(t=>$(t).classList.add('hidden')); $(id).classList.remove('hidden'); }
+
+  // RENDER functions
+  function renderPortfolio(){ const tbody = $('tblBody'); tbody.innerHTML=''; let invested=0,current=0,pl=0; appState.portfolio.forEach((it,idx)=>{ const live = it.live || it.buy || 0; const inv = it.qty*it.buy; const cur = it.qty*live; const pnl = cur - inv; invested+=inv; current+=cur; pl+=pnl; const plp = it.buy? ((live-it.buy)/it.buy*100):0; const tr = document.createElement('tr'); tr.innerHTML = `<td>${it.symbol}</td><td>${it.qty}</td><td>${fmt(it.buy)}</td><td id="live-${idx}">${fmt(live)}</td><td>${fmt(inv)}</td><td>${fmt(cur)}</td><td class="${pnl>=0?'profit':'loss'}">${fmt(pnl)}</td><td class="${pnl>=0?'profit':'loss'}">${plp.toFixed(2)}%</td><td><button data-i="${idx}" class="refreshOne">Refresh</button> <button data-i="${idx}" class="editOne">Edit</button> <button data-i="${idx}" class="delOne">Del</button></td>`; tbody.appendChild(tr); }); $('totInvested').textContent = fmt(invested); $('totCurrent').textContent = fmt(current); $('totPLRs').textContent = fmt(pl); const totp = invested?((current-invested)/invested*100):0; $('totPLPerc').textContent = totp.toFixed(2)+'%';
+
+    // bind buttons
+    document.querySelectorAll('.delOne').forEach(b=>b.onclick = e=>{ const i=+e.target.dataset.i; appState.portfolio.splice(i,1); saveStateForUser(currentUser,appState); renderPortfolio(); });
+    document.querySelectorAll('.refreshOne').forEach(b=>b.onclick = async e=>{ const i=+e.target.dataset.i; const sym=appState.portfolio[i].symbol; const old = appState.portfolio[i].live||appState.portfolio[i].buy; const q = await fetchQuoteNSE(sym); if(q){ appState.portfolio[i].live=q; saveStateForUser(currentUser,appState); document.getElementById('live-'+i).textContent = fmt(q); } else alert('Price fetch failed'); });
+  }
+
+  function renderIpos(){ const tbody=$('ipoTableBody'); tbody.innerHTML=''; appState.ipos.forEach((it,idx)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${it.name}</td><td>${it.open}</td><td>${it.close}</td><td>${it.listing||'-'}</td><td>${it.gmp||'-'}</td><td><button data-i="${idx}" class="toggleIpoWish">${it.wishlist? 'Remove':'Add'}</button></td>`; tbody.appendChild(tr); }); document.querySelectorAll('.toggleIpoWish').forEach(b=>b.onclick=e=>{ const i=+e.target.dataset.i; appState.ipos[i].wishlist = !appState.ipos[i].wishlist; if(appState.ipos[i].wishlist) appState.wishlist.push({type:'ipo',id:appState.ipos[i].id||('ipo_'+i),name:appState.ipos[i].name}); else appState.wishlist = appState.wishlist.filter(x=>!(x.type==='ipo' && x.id==(appState.ipos[i].id||('ipo_'+i)))); saveStateForUser(currentUser,appState); renderIpos(); renderWishlist(); }); }
+
+  function renderWishlist(){ const tbody=$('wishlistBody'); tbody.innerHTML=''; appState.wishlist.forEach((it,idx)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${it.type==='ipo'? it.name : it.symbol}</td><td>${it.type.toUpperCase()}</td><td><button data-i="${idx}" class="rmWish">Remove</button></td>`; tbody.appendChild(tr); }); document.querySelectorAll('.rmWish').forEach(b=>b.onclick=e=>{ const i=+e.target.dataset.i; appState.wishlist.splice(i,1); saveStateForUser(currentUser,appState); renderWishlist(); }); }
+
+  function renderNifty(){ const tbody=$('niftyBody'); tbody.innerHTML=''; const entries = Object.keys(appState.nifty); entries.forEach(sym=>{ const d=appState.nifty[sym]||{}; const tr=document.createElement('tr'); tr.innerHTML = `<td>${sym}</td><td>${d.open?fmt(d.open):'-'}</td><td>${d.high?fmt(d.high):'-'}</td><td>${d.low?fmt(d.low):'-'}</td><td>${d.prevClose?fmt(d.prevClose):'-'}</td><td>${d.price?fmt(d.price):'-'}</td><td>${d.fiftyTwoWkHigh?fmt(d.fiftyTwoWkHigh):'-'}</td><td>${d.fiftyTwoWkLow?fmt(d.fiftyTwoWkLow):'-'}</td><td><button data-sym="${sym}" class="addWishNifty">Add</button></td>`; tbody.appendChild(tr); }); document.querySelectorAll('.addWishNifty').forEach(b=>b.onclick=e=>{ const s=e.target.dataset.sym; appState.wishlist.push({type:'stock',symbol:s}); saveStateForUser(currentUser,appState); renderWishlist(); alert(s+' added to wishlist'); }); }
+
+  // === Fetch quotes & data ===
+  // Primary: NSE endpoints (proxied). Fallbacks: Yahoo Finance
+
+  async function fetchNiftyConstituents(){
+    // Try NSE index constituents API
+    try{
+      const url = PROXY + encodeURIComponent('https://www.nseindia.com/api/content/indices/ind_nifty50list.csv');
+      const res = await fetch(url); if(!res.ok) throw new Error('csv fetch failed'); const txt = await res.text();
+      // parse CSV (symbol may be in 1st column)
+      const lines = txt.split('\n').slice(1).filter(Boolean);
+      const syms = lines.map(l=>l.split(',')[0].trim()).filter(Boolean);
+      return syms;
+    }catch(e){ console.warn('NSE constituents failed', e); return null; }
+  }
+
+  async function fetchQuoteNSE(symbol){
+    // Try NSE quote endpoint
+    try{
+      const path = `https://www.nseindia.com/api/quote-equity?symbol=${encodeURIComponent(symbol)}`;
+      const url = PROXY + encodeURIComponent(path);
+      const res = await fetch(url); if(!res.ok) throw new Error('nse quote failed'); const txt = await res.text(); const data = JSON.parse(txt);
+      // data structure may vary; try to extract lastPrice & other fields
+      if(data && data.priceInfo){ const p = data.priceInfo; return p.lastPrice || p.avgPrice || null; }
+      if(data && data.metadata && data.metric){ return data.metadata['lastPrice'] || null; }
+      return null;
+    }catch(e){ console.warn('NSE quote failed', e); }
+    // fallback to Yahoo
+    try{
+      const q = symbol.includes('.NS')? symbol : symbol + '.NS';
+      const yurl = PROXY + encodeURIComponent(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${q}`);
+      const r2 = await fetch(yurl); if(!r2.ok) throw new Error('yahoo fail'); const txt2 = await r2.text(); const jd = JSON.parse(txt2);
+      if(jd && jd.quoteResponse && jd.quoteResponse.result && jd.quoteResponse.result.length){ const qd = jd.quoteResponse.result[0]; return qd.regularMarketPrice || qd.regularMarketPreviousClose || null; }
+    }catch(e){ console.warn('Yahoo fallback failed', e); }
     return null;
-  }catch(e){ console.warn('yahoo fetch error', e); return null; }
-}
-
-// state
-let currentUser = null;
-let appState = { portfolio: [], ipos: [], wishlist: [], nifty: {} };
-let autoTimer = null;
-
-// formatting
-function fmt(n){ return Number.isFinite(n) ? '₹' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '-'; }
-
-// RENDERERS
-function renderPortfolio(){
-  const tbody = $('tblBody'); tbody.innerHTML = '';
-  let invested=0,current=0,plrs=0;
-  appState.portfolio.forEach((it, idx) => {
-    const live = it.live || it.buy || 0;
-    const investedRow = it.qty * it.buy;
-    const currentRow = it.qty * live;
-    const plValue = currentRow - investedRow;
-    invested += investedRow; current += currentRow; plrs += plValue;
-    const plPerc = it.buy ? ((live - it.buy)/it.buy*100) : 0;
-    const tr = document.createElement('tr');
-    const plClass = plValue >= 0 ? 'profit' : 'loss';
-    tr.innerHTML = `<td class="font-medium">${it.symbol}</td><td>${it.qty}</td><td>${fmt(it.buy)}</td><td id="live-${idx}">${fmt(live)}</td><td>${fmt(investedRow)}</td><td>${fmt(currentRow)}</td><td class="${plClass}">${fmt(plValue)}</td><td class="${plClass}">${plPerc.toFixed(2)}%</td><td><button data-i="${idx}" class="px-2 py-1 rounded-md border fetchBtn">Refresh</button> <button data-i="${idx}" class="px-2 py-1 rounded-md border editBtn">Edit</button> <button data-i="${idx}" class="px-2 py-1 rounded-md border text-red-600 delBtn">Del</button></td>`;
-    tbody.appendChild(tr);
-  });
-  $('totInvested').textContent = fmt(invested);
-  $('totCurrent').textContent = fmt(current);
-  $('totPLRs').textContent = fmt(plrs);
-  const totPerc = invested ? ((current - invested)/invested*100) : 0;
-  $('totPLPerc').textContent = totPerc.toFixed(2) + '%';
-
-  document.querySelectorAll('.delBtn').forEach(b => b.onclick = e => { const i = +e.target.dataset.i; appState.portfolio.splice(i,1); saveState(); renderPortfolio(); });
-  document.querySelectorAll('.editBtn').forEach(b => b.onclick = e => openModalEditPortfolio(+e.target.dataset.i));
-  document.querySelectorAll('.fetchBtn').forEach(b => b.onclick = async e => {
-    const i = +e.target.dataset.i; const s = appState.portfolio[i].symbol; const old = appState.portfolio[i].live || appState.portfolio[i].buy;
-    const q = await fetchQuoteYahoo(s);
-    if(q && q.regularMarketPrice){ appState.portfolio[i].live = q.regularMarketPrice; saveState(); flashPrice(i, old, q.regularMarketPrice); renderPortfolio(); $('lastUpdated').textContent = new Date().toLocaleString(); } else alert('Price fetch failed for ' + s);
-  });
-}
-
-function renderIpos(){
-  const tbody = $('ipoBody'); tbody.innerHTML = '';
-  appState.ipos.forEach((it, idx) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="font-medium">${it.title}</td><td>${it.start || '-'}</td><td>${it.end || '-'}</td><td>${it.listing || '-'}</td><td>${it.gmp!==undefined?it.gmp:'-'}</td><td>${it.wishlist? '★':' '}</td><td><button data-i="${idx}" class="px-2 py-1 rounded-md border editIpo">Edit</button> <button data-i="${idx}" class="px-2 py-1 rounded-md border addWishIpo">Toggle Wishlist</button></td>`;
-    tbody.appendChild(tr);
-  });
-  document.querySelectorAll('.editIpo').forEach(b=>b.onclick=e=>openModalEditIpo(+e.target.dataset.i));
-  document.querySelectorAll('.addWishIpo').forEach(b=>b.onclick=e=>{ const i=+e.target.dataset.i; appState.ipos[i].wishlist = !appState.ipos[i].wishlist; if(appState.ipos[i].wishlist) appState.wishlist.push({type:'ipo',id:appState.ipos[i].id||('ipo_'+i),title:appState.ipos[i].title}); else { appState.wishlist = appState.wishlist.filter(w=>!(w.type==='ipo' && w.id==(appState.ipos[i].id||('ipo_'+i)))) } saveState(); renderIpos(); });
-}
-
-function renderNifty(){
-  const tbody = $('niftyBody'); tbody.innerHTML = '';
-  const symbols = DEFAULT_NIFTY;
-  symbols.forEach((s, idx) => {
-    const data = appState.nifty[s] || {};
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td><input type="checkbox" data-s="${s}" class="niftySelect" /></td><td class="font-medium">${s}</td><td id="cmp-${idx}">${data.price? fmt(data.price): '-'}</td><td id="open-${idx}">${data.open?fmt(data.open):'-'}</td><td id="high-${idx}">${data.high?fmt(data.high):'-'}</td><td id="low-${idx}">${data.low?fmt(data.low):'-'}</td><td id="prev-${idx}">${data.prevClose?fmt(data.prevClose):'-'}</td><td id="52h-${idx}">${data.fiftyTwoWkHigh?fmt(data.fiftyTwoWkHigh):'-'}</td><td id="52l-${idx}">${data.fiftyTwoWkLow?fmt(data.fiftyTwoWkLow):'-'}</td><td><button data-s="${s}" class="px-2 py-1 rounded-md border addWishNifty">Add</button></td>`;
-    tbody.appendChild(tr);
-  });
-  document.querySelectorAll('.addWishNifty').forEach(b=>b.onclick=e=>{ const s=e.target.dataset.s; appState.wishlist.push({type:'nifty',symbol:s}); saveState(); alert(s + ' added to wishlist'); });
-}
-
-// flash animation
-function flashPrice(idx, oldPrice, newPrice){
-  const el = document.getElementById('live-'+idx); if(!el) return;
-  if(newPrice > oldPrice) { el.classList.add('profit'); setTimeout(()=>el.classList.remove('profit'),900); }
-  else if(newPrice < oldPrice){ el.classList.add('loss'); setTimeout(()=>el.classList.remove('loss'),900); }
-}
-
-// refresh prices for portfolio and nifty
-async function refreshAllPrices(){
-  // portfolio
-  for(let i=0;i<appState.portfolio.length;i++){
-    try{
-      const old = appState.portfolio[i].live || appState.portfolio[i].buy;
-      const q = await fetchQuoteYahoo(appState.portfolio[i].symbol);
-      if(q && q.regularMarketPrice){ appState.portfolio[i].live = q.regularMarketPrice; flashPrice(i, old, q.regularMarketPrice); }
-    }catch(e){ console.warn(e); }
   }
-  // nifty
-  for(const s of DEFAULT_NIFTY){
+
+  async function fetchFullQuote(symbol){
+    // returns object with price/open/high/low/prevClose/52wk
     try{
-      const q = await fetchQuoteYahoo(s);
-      if(q){
-        appState.nifty[s] = {
-          price: q.regularMarketPrice,
-          open: q.regularMarketOpen,
-          high: q.regularMarketDayHigh,
-          low: q.regularMarketDayLow,
-          prevClose: q.regularMarketPreviousClose,
-          fiftyTwoWkHigh: q.fiftyTwoWeekHigh,
-          fiftyTwoWkLow: q.fiftyTwoWeekLow
-        };
+      const q = symbol.includes('.NS')? symbol : symbol + '.NS';
+      const url = PROXY + encodeURIComponent(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${q}`);
+      const res = await fetch(url); if(!res.ok) throw new Error('yahoo fail'); const txt = await res.text(); const jd = JSON.parse(txt);
+      if(jd && jd.quoteResponse && jd.quoteResponse.result && jd.quoteResponse.result.length){ const r = jd.quoteResponse.result[0]; return {
+        price: r.regularMarketPrice,
+        open: r.regularMarketOpen,
+        high: r.regularMarketDayHigh,
+        low: r.regularMarketDayLow,
+        prevClose: r.regularMarketPreviousClose,
+        fiftyTwoWkHigh: r.fiftyTwoWeekHigh,
+        fiftyTwoWkLow: r.fiftyTwoWeekLow
+      }; }
+    }catch(e){ console.warn('full quote failed', e); }
+    return null;
+  }
+
+  // === Chittorgarh IPO & GMP scraping ===
+  async function fetchIposFromChittorgarh(){
+    try{
+      const url = PROXY + encodeURIComponent('https://www.chittorgarh.com/ipo_calendar/');
+      const res = await fetch(url); if(!res.ok) throw new Error('ipo fetch'); const html = await res.text();
+      // quick parsing: look for table rows with IPO info (this is best-effort)
+      const trs = html.split('<tr').slice(1,100);
+      const ipos = [];
+      for(const row of trs){
+        const cols = row.split('<td');
+        if(cols.length<3) continue;
+        const name = cols[1].replace(/<[^>]+>/g,'').trim().split('\n')[0];
+        const open = cols[2].replace(/<[^>]+>/g,'').trim().split('\n')[0];
+        const close = cols[3]? cols[3].replace(/<[^>]+>/g,'').trim().split('\n')[0] : '';
+        // gmp sometimes appears in later columns
+        const gmp = (row.match(/GMP[\s\S]*?([+-]?\d+%?)/i) || [])[1] || '';
+        if(name) ipos.push({ id: 'ipo_'+ipos.length, name, open, close, gmp, wishlist:false });
+        if(ipos.length>20) break;
       }
-    }catch(e){ console.warn('nifty fetch', e); }
-  }
-  saveState();
-  renderPortfolio(); renderNifty();
-  $('lastUpdated').textContent = new Date().toLocaleString();
-}
-
-// save state per user and optional repo sync
-function saveState(){
-  if(!currentUser) return;
-  saveAppStateForUser(currentUser, appState);
-  if($('autoRepoSync').checked) repoSync();
-}
-
-// combined import/export
-function exportAll(){
-  if(!currentUser){ alert('Login first'); return; }
-  const blob = new Blob([JSON.stringify(appState, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = currentUser + '-nse-full.json'; a.click(); URL.revokeObjectURL(url);
-}
-function importAll(fileContent){
-  try{
-    const d = JSON.parse(fileContent);
-    if(d && typeof d === 'object'){ appState = Object.assign({portfolio:[],ipos:[],wishlist:[],nifty:{}}, d); saveState(); renderAll(); alert('Imported full state'); }
-    else alert('Invalid file');
-  }catch(e){ alert('Invalid JSON'); }
-}
-
-// modal helpers
-function openModal(title, htmlContent, onSave){
-  $('modalTitle').textContent = title; const mb = $('modalBody'); mb.innerHTML = htmlContent;
-  $('modalWrap').classList.remove('hidden');
-  const saveHandler = () => { onSave(); $('modalWrap').classList.add('hidden'); };
-  const cancel = () => { $('modalWrap').classList.add('hidden'); };
-  $('modalCancel').onclick = cancel;
-  $('modalSave').onclick = saveHandler;
-}
-
-function openModalAddPortfolio(){
-  openModal('Add holding', `
-    <label class="block text-sm">Symbol <input id="txSymbol" class="mt-1 w-full rounded-md border p-2" /></label>
-    <label class="block text-sm">Qty <input id="txQty" type="number" class="mt-1 w-full rounded-md border p-2" value="1" /></label>
-    <label class="block text-sm">Buy price ₹ <input id="txBuy" type="number" step="0.01" class="mt-1 w-full rounded-md border p-2" /></label>
-  `, async ()=>{
-    const s = $('txSymbol').value.trim().toUpperCase(); const q = parseFloat($('txQty').value); const b = parseFloat($('txBuy').value);
-    if(!s||!(q>0)||!(b>0)){ alert('Enter valid values'); return; }
-    appState.portfolio.push({symbol:s,qty:q,buy:b}); saveState(); renderPortfolio();
-    const qd = await fetchQuoteYahoo(s); if(qd && qd.regularMarketPrice){ appState.portfolio[appState.portfolio.length-1].live = qd.regularMarketPrice; saveState(); renderPortfolio(); }
-  });
-}
-function openModalEditPortfolio(idx){
-  const it = appState.portfolio[idx];
-  openModal('Edit holding', `
-    <label class="block text-sm">Symbol <input id="txSymbol" class="mt-1 w-full rounded-md border p-2" value="${it.symbol}" /></label>
-    <label class="block text-sm">Qty <input id="txQty" type="number" class="mt-1 w-full rounded-md border p-2" value="${it.qty}" /></label>
-    <label class="block text-sm">Buy price ₹ <input id="txBuy" type="number" step="0.01" class="mt-1 w-full rounded-md border p-2" value="${it.buy}" /></label>
-  `, ()=>{
-    const s = $('txSymbol').value.trim().toUpperCase(); const q = parseFloat($('txQty').value); const b = parseFloat($('txBuy').value);
-    if(!s||!(q>0)||!(b>0)){ alert('Enter valid values'); return; }
-    appState.portfolio[idx].symbol = s; appState.portfolio[idx].qty = q; appState.portfolio[idx].buy = b; saveState(); renderPortfolio();
-  });
-}
-
-function openModalAddIpo(){
-  openModal('Add IPO', `
-    <label class="block text-sm">Title <input id="ipoTitle" class="mt-1 w-full rounded-md border p-2" /></label>
-    <label class="block text-sm">Start date <input id="ipoStart" type="date" class="mt-1 w-full rounded-md border p-2" /></label>
-    <label class="block text-sm">End date <input id="ipoEnd" type="date" class="mt-1 w-full rounded-md border p-2" /></label>
-    <label class="block text-sm">Listing date <input id="ipoListing" type="date" class="mt-1 w-full rounded-md border p-2" /></label>
-    <label class="block text-sm">GMP (optional) <input id="ipoGmp" class="mt-1 w-full rounded-md border p-2" /></label>
-  `, ()=>{
-    const t=$('ipoTitle').value.trim(); if(!t){ alert('Enter title'); return; }
-    const it = { id: 'ipo_' + Date.now(), title: t, start: $('ipoStart').value, end: $('ipoEnd').value, listing: $('ipoListing').value, gmp: $('ipoGmp').value, wishlist:false };
-    appState.ipos.push(it); saveState(); renderIpos();
-  });
-}
-function openModalEditIpo(idx){
-  const it = appState.ipos[idx];
-  openModal('Edit IPO', `
-    <label class="block text-sm">Title <input id="ipoTitle" class="mt-1 w-full rounded-md border p-2" value="${it.title}" /></label>
-    <label class="block text-sm">Start date <input id="ipoStart" type="date" class="mt-1 w-full rounded-md border p-2" value="${it.start||''}" /></label>
-    <label class="block text-sm">End date <input id="ipoEnd" type="date" class="mt-1 w-full rounded-md border p-2" value="${it.end||''}" /></label>
-    <label class="block text-sm">Listing date <input id="ipoListing" type="date" class="mt-1 w-full rounded-md border p-2" value="${it.listing||''}" /></label>
-    <label class="block text-sm">GMP <input id="ipoGmp" class="mt-1 w-full rounded-md border p-2" value="${it.gmp||''}" /></label>
-  `, ()=>{
-    it.title = $('ipoTitle').value.trim(); it.start = $('ipoStart').value; it.end = $('ipoEnd').value; it.listing = $('ipoListing').value; it.gmp = $('ipoGmp').value; saveState(); renderIpos();
-  });
-}
-
-// REPO SYNC - push full appState
-async function repoSync(){
-  const repoVal = $('ghRepo').value.trim(); const path = $('ghPath').value.trim(); const token = $('ghToken').value.trim();
-  if(!repoVal || !path || !token){ $('repoMsg').textContent = 'Enter repo, path and token.'; return; }
-  const [owner, repo] = repoVal.split('/');
-  if(!owner || !repo){ $('repoMsg').textContent = 'Repo must be owner/repo format.'; return; }
-  $('repoMsg').textContent = 'Syncing...';
-  try{
-    const meta = await getFileMeta(owner, repo, path, token);
-    const content = JSON.stringify(appState, null, 2);
-    if(meta === null){
-      await createOrUpdateFile(owner, repo, path, token, content, null);
-      $('repoMsg').textContent = 'File created & synced.'; saveRepoMeta({owner,repo,path});
-    } else {
-      await createOrUpdateFile(owner, repo, path, token, content, meta.sha);
-      $('repoMsg').textContent = 'File updated & synced.'; saveRepoMeta({owner,repo,path,sha:meta.sha});
-    }
-  }catch(err){ console.error(err); $('repoMsg').textContent = 'Sync failed: ' + err.message; }
-}
-
-async function repoLoad(){
-  const repoVal = $('ghRepo').value.trim(); const path = $('ghPath').value.trim(); const token = $('ghToken').value.trim();
-  if(!repoVal || !path){ $('repoMsg').textContent = 'Enter repo and path.'; return; }
-  const [owner, repo] = repoVal.split('/');
-  if(!owner || !repo){ $('repoMsg').textContent = 'Repo must be owner/repo format.'; return; }
-  $('repoMsg').textContent = 'Loading from repo...';
-  try{
-    const meta = await getFileMeta(owner, repo, path, token);
-    if(!meta){ $('repoMsg').textContent = 'File not found in repo.'; return; }
-    const raw = b64_to_utf8(meta.content.replace(/\n/g,'')); const data = JSON.parse(raw);
-    if(!data || typeof data !== 'object'){ $('repoMsg').textContent = 'Repo JSON invalid.'; return; }
-    appState = data; saveState(); renderAll(); $('repoMsg').textContent = 'Loaded portfolio from repo.'; $('lastUpdated').textContent = new Date().toLocaleString();
-  }catch(err){ console.error(err); $('repoMsg').textContent = 'Load failed: ' + err.message; }
-}
-
-// persist login
-function persistLogin(user){
-  if(user) localStorage.setItem(CURRENT_USER_KEY, user); else localStorage.removeItem(CURRENT_USER_KEY);
-}
-function loadPersistedUser(){ return localStorage.getItem(CURRENT_USER_KEY); }
-
-// render all
-function renderAll(){ renderPortfolio(); renderIpos(); renderNifty(); }
-
-// UI wiring and login fixes
-document.addEventListener('DOMContentLoaded', ()=>{
-  // theme
-  const pref = localStorage.getItem('nse_theme_v1') || 'light'; if(pref==='dark') document.documentElement.classList.add('dark');
-
-  const usernameEl = $('username'), pinEl = $('pin');
-
-  // auto-login if persisted
-  const persisted = loadPersistedUser();
-  if(persisted){
-    const users = loadUsers();
-    if(users[persisted]){
-      currentUser = persisted;
-      appState = loadAppStateForUser(currentUser);
-      showLoggedInUI();
-      renderAll();
-      refreshAllPrices();
-      if(autoTimer) clearInterval(autoTimer);
-      autoTimer = setInterval(refreshAllPrices, AUTO_REFRESH_MS);
-      const repoMeta = loadRepoMeta()||{}; if(repoMeta.owner && repoMeta.repo && repoMeta.path) $('ghRepo').value = repoMeta.owner + '/' + repoMeta.repo;
-      const token = localStorage.getItem('nse_repo_token_v1'); if(token) $('ghToken').value = token;
-    } else {
-      persistLogin(null);
-    }
+      return ipos;
+    }catch(e){ console.warn('Chittorgarh fetch failed', e); return []; }
   }
 
-  // register
-  $('btnRegister').onclick = ()=>{
-    const u = usernameEl.value.trim(), pin = pinEl.value.trim();
-    if(!u || !pin){ $('authMsg').textContent = 'Enter username and 4-digit PIN'; return; }
-    if(pin.length < 4){ $('authMsg').textContent = 'PIN must be 4 digits'; return; }
-    const users = loadUsers(); if(users[u]){ $('authMsg').textContent = 'Username exists'; return; }
-    users[u] = btoa(pin); saveUsers(users);
-    $('authMsg').style.color = 'green'; $('authMsg').textContent = 'Registered — press Login';
-  };
-
-  // login (fixed)
-  $('btnLogin').onclick = ()=>{
-    const u = usernameEl.value.trim(), pin = pinEl.value.trim();
-    $('authMsg').textContent = '';
-    if(!u || !pin){ $('authMsg').textContent = 'Enter username and PIN'; return; }
-    const users = loadUsers();
-    if(users[u] && users[u] === btoa(pin)){
-      currentUser = u;
-      persistLogin(u); // persist across refresh
-      appState = loadAppStateForUser(currentUser);
-      showLoggedInUI();
-      renderAll();
-      refreshAllPrices();
-      if(autoTimer) clearInterval(autoTimer);
-      autoTimer = setInterval(refreshAllPrices, AUTO_REFRESH_MS);
-      const repoMeta = loadRepoMeta()||{}; if(repoMeta.owner && repoMeta.repo && repoMeta.path) $('ghRepo').value = repoMeta.owner + '/' + repoMeta.repo;
-      const token = localStorage.getItem('nse_repo_token_v1'); if(token) $('ghToken').value = token;
-    } else {
-      $('authMsg').textContent = 'Invalid username or PIN';
+  // === High level refresh flow ===
+  async function refreshNiftyAndQuotes(){
+    // fetch constituents
+    const syms = await fetchNiftyConstituents();
+    let symbols = syms && syms.length? syms : (Object.keys(appState.nifty).length? Object.keys(appState.nifty) : []);
+    if(symbols.length===0){ // fallback to default list
+      symbols = ['RELIANCE','TCS','INFY','HDFCBANK','ICICIBANK','HINDUNILVR','LT','ITC','SBIN','KOTAKBANK'];
     }
-  };
 
-  // logout
-  $('btnLogout').onclick = ()=>{ currentUser=null; appState={portfolio:[],ipos:[],wishlist:[],nifty:{}}; persistLogin(null); if(autoTimer) clearInterval(autoTimer); hideLoggedInUI(); };
-
-  // tabs
-  const tabs = { portfolio: $('tabPortfolio'), ipos: $('tabIPOs'), nifty: $('tabNifty') };
-  tabs.portfolio.onclick = ()=> setActiveTab('portfolio');
-  tabs.ipos.onclick = ()=> setActiveTab('ipos');
-  tabs.nifty.onclick = ()=> setActiveTab('nifty');
-
-  function setActiveTab(name){
-    tabs.portfolio.classList.remove('active'); tabs.ipos.classList.remove('active'); tabs.nifty.classList.remove('active');
-    $('panelPortfolio').classList.add('hidden'); $('panelIPOs').classList.add('hidden'); $('panelNifty').classList.add('hidden');
-    if(name==='portfolio'){ tabs.portfolio.classList.add('active'); $('panelPortfolio').classList.remove('hidden'); }
-    if(name==='ipos'){ tabs.ipos.classList.add('active'); $('panelIPOs').classList.remove('hidden'); }
-    if(name==='nifty'){ tabs.nifty.classList.add('active'); $('panelNifty').classList.remove('hidden'); }
+    // fetch quotes in batches
+    for(const s of symbols){
+      try{
+        const data = await fetchFullQuote(s);
+        if(data){ appState.nifty[s] = data; }
+      }catch(e){ console.warn('quote loop error', e); }
+    }
+    // for portfolio, update live prices
+    for(let i=0;i<appState.portfolio.length;i++){
+      try{ const q = await fetchQuoteNSE(appState.portfolio[i].symbol); if(q!==null){ appState.portfolio[i].live = q; } }catch(e){}
+    }
+    saveStateForUser(currentUser, appState);
+    renderNifty(); renderPortfolio(); $('lastUpdated').textContent = new Date().toLocaleString();
   }
 
-  // add contextual
-  $('btnAdd').onclick = ()=>{ if(tabs.portfolio.classList.contains('active')) openModalAddPortfolio(); else if(tabs.ipos.classList.contains('active')) openModalAddIpo(); else alert('To add Nifty items use the Add button on rows'); };
+  // === UI wiring & login ===
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // restore persisted user
+    const saved = localStorage.getItem(CURRENT_USER_KEY);
+    if(saved){ currentUser = saved; appState = loadStateForUser(currentUser); $('displayUser').textContent = currentUser; $('authView').classList.add('hidden'); $('userPanel').classList.remove('hidden'); showTab('portfolioTab'); renderAll(); refreshNiftyAndQuotes(); refreshTimer = setInterval(refreshNiftyAndQuotes, 60*1000); }
 
-  // refresh page (keep login)
-  $('btnRefreshPage').onclick = ()=>{ location.reload(); };
+    // register
+    $('btnRegister').onclick = ()=>{ const u=$('username').value.trim(); const p=$('pin').value.trim(); if(!u||!p){ $('authMsg').textContent='Enter username and PIN'; return; } if(p.length<4){ $('authMsg').textContent='PIN must be 4 digits'; return; } const users = loadUsers(); if(users[u]){ $('authMsg').textContent='User exists'; return; } users[u]=btoa(p); saveUsers(users); $('authMsg').style.color='green'; $('authMsg').textContent='Registered, now login'; };
 
-  // fetch all prices
-  $('btnFetchAll').onclick = async ()=>{ $('statusMsg').textContent = 'Refreshing...'; await refreshAllPrices(); $('statusMsg').textContent = 'Prices updated'; };
+    // login
+    $('btnLogin').onclick = ()=>{ const u=$('username').value.trim(); const p=$('pin').value.trim(); const users=loadUsers(); if(users[u] && users[u]===btoa(p)){ currentUser = u; localStorage.setItem(CURRENT_USER_KEY, u); appState = loadStateForUser(u); $('displayUser').textContent = u; $('authView').classList.add('hidden'); $('userPanel').classList.remove('hidden'); renderAll(); refreshNiftyAndQuotes(); if(refreshTimer) clearInterval(refreshTimer); refreshTimer = setInterval(refreshNiftyAndQuotes, 60*1000); } else $('authMsg').textContent='Invalid username or PIN'; };
 
-  // IPO actions
-  $('btnAddIpo').onclick = openModalAddIpo;
-  $('btnFetchIpos').onclick = ()=>{ const sample = [ { id:'ipo_a', title:'ABC Corp IPO', start:'2025-10-27', end:'2025-10-29', listing:'2025-11-05', gmp:'+12%', wishlist:false }, { id:'ipo_b', title:'XYZ Ltd IPO', start:'2025-11-03', end:'2025-11-05', listing:'2025-11-12', gmp:'-5%', wishlist:false } ]; appState.ipos = appState.ipos.concat(sample); saveState(); renderIpos(); alert('Sample IPOs added (current & upcoming)'); };
+    $('btnLogout').onclick = ()=>{ localStorage.removeItem(CURRENT_USER_KEY); currentUser=null; appState = emptyState(); if(refreshTimer) clearInterval(refreshTimer); $('authView').classList.remove('hidden'); $('userPanel').classList.add('hidden'); showTab('portfolioTab'); };
 
-  // import/export combined
-  $('btnExport').onclick = exportAll;
-  $('btnImport').onclick = ()=>$('fileInput').click();
-  $('fileInput').onchange = e => { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = ()=> importAll(r.result); r.readAsText(f); };
+    $('btnChangePin').onclick = ()=>{ const np=prompt('Enter new 4-digit PIN'); if(np && np.length===4){ const users=loadUsers(); users[currentUser]=btoa(np); saveUsers(users); alert('PIN changed'); } else alert('Invalid'); };
 
-  // nifty actions
-  $('btnFetchNifty').onclick = async ()=>{ await refreshAllPrices(); alert('Nifty data refreshed'); };
-  $('btnAddWishlistFromNifty').onclick = ()=>{ const checks = document.querySelectorAll('.niftySelect:checked'); checks.forEach(cb=>{ appState.wishlist.push({type:'nifty',symbol:cb.dataset.s}); }); saveState(); alert('Selected added to wishlist'); };
+    // tabs
+    $('tabBtnPortfolio').onclick = ()=>{ showTab('portfolioTab'); renderPortfolio(); };
+    $('tabBtnIpos').onclick = async ()=>{ showTab('iposTab'); if(appState.ipos.length===0){ const ipos = await fetchIposFromChittorgarh(); appState.ipos = ipos; saveStateForUser(currentUser, appState); renderIpos(); } else renderIpos(); };
+    $('tabBtnWishlist').onclick = ()=>{ showTab('wishlistTab'); renderWishlist(); };
+    $('tabBtnNifty').onclick = async ()=>{ showTab('niftyTab'); if(Object.keys(appState.nifty).length===0) await refreshNiftyAndQuotes(); renderNifty(); };
 
-  // repo connect / sync
-  $('btnRepoConnect').onclick = ()=>{ const token = $('ghToken').value.trim(); if(!token){ $('repoMsg').textContent = 'Enter token'; return; } localStorage.setItem('nse_repo_token_v1', token); $('repoMsg').textContent = 'Token saved locally.'; };
-  $('btnRepoSync').onclick = async ()=>{ await repoSync(); };
-  $('btnRepoSync').ondblclick = async ()=>{ await repoLoad(); };
+    // import/export
+    $('btnExport').onclick = ()=>{ if(!currentUser){ alert('Login first'); return; } const blob = new Blob([JSON.stringify(appState,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=currentUser+'-nse-state.json'; a.click(); };
+    $('btnImport').onclick = ()=>$('fileInput').click();
+    $('fileInput').onchange = e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); appState = Object.assign(emptyState(), d); saveStateForUser(currentUser,appState); renderAll(); alert('Imported'); }catch(e){ alert('Invalid JSON'); } }; r.readAsText(f); };
 
-  // modal cancel
-  $('modalCancel').onclick = ()=>$('modalWrap').classList.add('hidden');
+    // repo sync
+    $('btnRepoConnect').onclick = ()=>{ const token = $('ghToken').value.trim(); if(!token) { $('repoMsg').textContent='Enter token'; return; } localStorage.setItem('nse_repo_token_v1', token); $('repoMsg').textContent='Token saved locally'; };
+    $('btnRepoSync').onclick = async ()=>{ const token = localStorage.getItem('nse_repo_token_v1'); const repo = $('ghRepo').value.trim(); const path=$('ghPath').value.trim()||'portfolio.json'; if(!repo||!token){ $('repoMsg').textContent='Enter repo and token'; return; } const [owner,rname]=repo.split('/'); try{ const meta = await getFileMeta(owner,rname,path,token); const content = JSON.stringify(appState,null,2); if(meta===null) await createOrUpdateFile(owner,rname,path,token,content,null); else await createOrUpdateFile(owner,rname,path,token,content,meta.sha); $('repoMsg').textContent='Synced'; }catch(e){ $('repoMsg').textContent='Sync failed: '+e.message; } };
 
-  // show/hide helpers
-  function showLoggedInUI(){ $('authForm').classList.add('hidden'); $('userPanel').classList.remove('hidden'); $('contentCard').classList.remove('hidden'); $('displayUser').textContent = currentUser; setActiveTab('portfolio'); renderAll(); }
-  function hideLoggedInUI(){ $('authForm').classList.remove('hidden'); $('userPanel').classList.add('hidden'); $('contentCard').classList.add('hidden'); $('displayUser').textContent = ''; }
+    // add contextual
+    $('btnAdd').onclick = ()=>{ if(document.getElementById('portfolioTab').classList.contains('hidden')){ // not portfolio
+        // when in IPO tab
+        if(!document.getElementById('iposTab').classList.contains('hidden')) openAddIpo();
+        else alert('Use row actions to add from Nifty or IPO lists');
+      } else { openAddHolding(); } };
 
-});
-</script>
+    // refresh manual
+    $('btnRefreshPrices').onclick = ()=>refreshNiftyAndQuotes();
+
+    // IPO fetch
+    $('btnFetchIpos').onclick = async ()=>{ const ipos = await fetchIposFromChittorgarh(); appState.ipos = ipos; saveStateForUser(currentUser, appState); renderIpos(); };
+
+    // Nifty refresh
+    $('btnFetchNifty').onclick = ()=>refreshNiftyAndQuotes();
+
+    // initial show
+    showTab('portfolioTab');
+  }); // DOMContentLoaded
+
+  // helper: render all
+  function renderAll(){ renderPortfolio(); renderIpos(); renderWishlist(); renderNifty(); }
+
+  // modal helpers (simple prompts for add/edit)
+  function openAddHolding(){ const s=prompt('Symbol (e.g. RELIANCE)'); if(!s) return; const q=parseFloat(prompt('Quantity','1')); const b=parseFloat(prompt('Buy price','0')); if(!s||!q||!b) return; appState.portfolio.push({symbol:s.toUpperCase(),qty:q,buy:b}); saveStateForUser(currentUser,appState); renderPortfolio(); }
+  function openAddIpo(){ const name=prompt('Company name'); if(!name) return; const open=prompt('Open date (YYYY-MM-DD)'); const close=prompt('Close date (YYYY-MM-DD)'); const listing=prompt('Listing date (YYYY-MM-DD)'); const gmp=prompt('GMP (optional)'); const obj={id:'ipo_'+Date.now(),name,open,close,listing,gmp,wishlist:false}; appState.ipos.push(obj); saveStateForUser(currentUser,appState); renderIpos(); }
+
+  // GitHub content helpers (same as before)
+  function utf8_to_b64(str){ return btoa(unescape(encodeURIComponent(str))); }
+  function b64_to_utf8(b){ return decodeURIComponent(escape(atob(b))); }
+  async function getFileMeta(owner, repo, path, token){ const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`; const headers = token? {'Authorization':'token '+token} : {}; const res = await fetch(url,{headers}); if(res.status===404) return null; if(!res.ok) throw new Error('Fetch file failed: '+res.status); return await res.json(); }
+  async function createOrUpdateFile(owner, repo, path, token, contentStr, sha){ const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`; const body={message:'Update portfolio state',content:utf8_to_b64(contentStr)}; if(sha) body.sha=sha; const res = await fetch(url,{method:'PUT',headers:{'Authorization':'token '+token,'Content-Type':'application/json'},body:JSON.stringify(body)}); if(!res.ok) throw new Error('Update file failed: '+res.status+' '+await res.text()); return await res.json(); }
+
+  </script>
 </body>
 </html>
