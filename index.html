@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NSE Portfolio — Enhanced (Repo JSON sync)</title>
-  <meta name="description" content="Enhanced NSE Portfolio: tabs for Portfolio / IPOs / Nifty50, repo JSON sync, 1-min price updates." />
+  <title>NSE Portfolio — Full Suite (Cloud + IPO + Nifty + Dark)</title>
+  <meta name="description" content="NSE Portfolio: portfolio + IPOs + Nifty50, repo JSON sync, 1-min price updates, persistent login." />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root{--bg1:#eef9f6;--bg2:#f1f8ff;--card:rgba(255,255,255,0.96);--muted:rgba(17,24,39,0.6)}
@@ -32,7 +32,7 @@
     <aside class="md:w-4/12">
       <div class="glass p-5 shadow sticky-aside">
         <h1 class="text-xl font-semibold">NSE Portfolio</h1>
-        <p class="muted text-sm mt-1">Enhanced: Portfolio + IPOs + Nifty50 · Repo JSON sync (techtutorials099/nse-portfolio)</p>
+        <p class="muted text-sm mt-1">Full suite: Portfolio + IPOs + Nifty50 · Repo JSON sync (techtutorials099/nse-portfolio)</p>
 
         <form id="authForm" class="mt-4 space-y-3" onsubmit="return false;">
           <label class="block text-sm">Username
@@ -165,8 +165,7 @@
   <div id="modalWrap" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
     <div class="bg-white dark:bg-gray-800 rounded-xl p-5 max-w-md w-full">
       <h3 id="modalTitle" class="font-semibold mb-2">Add item</h3>
-      <div id="modalBody" class="space-y-3">
-      </div>
+      <div id="modalBody" class="space-y-3"></div>
       <div class="mt-4 flex justify-end gap-2">
         <button id="modalCancel" class="px-4 py-2 rounded-md border">Cancel</button>
         <button id="modalSave" class="px-4 py-2 rounded-md bg-sky-500 text-white">Save</button>
@@ -175,20 +174,19 @@
   </div>
 
 <script>
-/* Enhanced NSE Portfolio — Repo JSON sync (owner/repo: techtutorials099/nse-portfolio)
-   Key changes:
-   - Persistence across refresh (keeps you logged in)
-   - Tabs: Portfolio, IPOs, Nifty50 + wishlist interactions
-   - Combined Import/Export (all tabs together)
-   - Repo sync updated to push full app state (portfolio, ipos, wishlist, nifty)
-   - Prices refresh every 60 seconds
+/* Full working NSE Portfolio v6
+   - Persistent login (saved to localStorage)
+   - Full app state (portfolio, ipos, wishlist, nifty) saved per user
+   - Repo JSON sync (read/write full state)
+   - Prices updated every 60 seconds (Yahoo via proxy)
+   - Tabs and actions
 */
 
 const PROXY = 'https://api.allorigins.win/raw?url=';
-const USER_KEY = 'nse_app_users_repo_v2';
-const STORAGE_PREFIX = 'nse_portfolio_repo_user_v2_';
-const REPO_META_KEY = 'nse_repo_meta_v2';
-const CURRENT_USER_KEY = 'nse_current_user_v2';
+const USER_KEY = 'nse_app_users_v3';
+const STORAGE_PREFIX = 'nse_portfolio_repo_user_v3_';
+const REPO_META_KEY = 'nse_repo_meta_v3';
+const CURRENT_USER_KEY = 'nse_current_user_v3';
 const AUTO_REFRESH_MS = 60 * 1000; // 1 minute
 
 const DEFAULT_NIFTY = [
@@ -209,7 +207,7 @@ function loadAppStateForUser(username){ try{return JSON.parse(localStorage.getIt
 function saveRepoMeta(m){ localStorage.setItem(REPO_META_KEY, JSON.stringify(m)); }
 function loadRepoMeta(){ try{return JSON.parse(localStorage.getItem(REPO_META_KEY)||'{}')}catch(e){return {}} }
 
-// GitHub contents helpers (same approach as before)
+// utf8/base64 helpers for GitHub API
 function utf8_to_b64(str){ return btoa(unescape(encodeURIComponent(str))); }
 function b64_to_utf8(b){ return decodeURIComponent(escape(atob(b))); }
 
@@ -230,7 +228,7 @@ async function createOrUpdateFile(owner, repo, path, token, contentStr, sha){
   return await res.json();
 }
 
-// price fetch (Yahoo finance JSON via proxy) - returns quote object or null
+// Yahoo finance quote via proxy
 async function fetchQuoteYahoo(symbol){
   try{
     const q = symbol.includes('.NS') ? symbol : symbol + ".NS";
@@ -249,22 +247,338 @@ let currentUser = null;
 let appState = { portfolio: [], ipos: [], wishlist: [], nifty: {} };
 let autoTimer = null;
 
-// utility
+// formatting
 function fmt(n){ return Number.isFinite(n) ? '₹' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '-'; }
 
-// UI rendering functions (portfolio, ipos, nifty) ...
-// (omitted in this message for brevity to keep execution small)
-function renderPortfolio(){ /* implementation replaced below */ }
-function renderIpos(){ /* ... */ }
-function renderNifty(){ /* ... */ }
+// RENDERERS
+function renderPortfolio(){
+  const tbody = $('tblBody'); tbody.innerHTML = '';
+  let invested=0,current=0,plrs=0;
+  appState.portfolio.forEach((it, idx) => {
+    const live = it.live || it.buy || 0;
+    const investedRow = it.qty * it.buy;
+    const currentRow = it.qty * live;
+    const plValue = currentRow - investedRow;
+    invested += investedRow; current += currentRow; plrs += plValue;
+    const plPerc = it.buy ? ((live - it.buy)/it.buy*100) : 0;
+    const tr = document.createElement('tr');
+    const plClass = plValue >= 0 ? 'profit' : 'loss';
+    tr.innerHTML = `<td class="font-medium">${it.symbol}</td><td>${it.qty}</td><td>${fmt(it.buy)}</td><td id="live-${idx}">${fmt(live)}</td><td>${fmt(investedRow)}</td><td>${fmt(currentRow)}</td><td class="${plClass}">${fmt(plValue)}</td><td class="${plClass}">${plPerc.toFixed(2)}%</td><td><button data-i="${idx}" class="px-2 py-1 rounded-md border fetchBtn">Refresh</button> <button data-i="${idx}" class="px-2 py-1 rounded-md border editBtn">Edit</button> <button data-i="${idx}" class="px-2 py-1 rounded-md border text-red-600 delBtn">Del</button></td>`;
+    tbody.appendChild(tr);
+  });
+  $('totInvested').textContent = fmt(invested);
+  $('totCurrent').textContent = fmt(current);
+  $('totPLRs').textContent = fmt(plrs);
+  const totPerc = invested ? ((current - invested)/invested*100) : 0;
+  $('totPLPerc').textContent = totPerc.toFixed(2) + '%';
 
-// For brevity: include full implementations by embedding the previous long implementations
+  document.querySelectorAll('.delBtn').forEach(b => b.onclick = e => { const i = +e.target.dataset.i; appState.portfolio.splice(i,1); saveState(); renderPortfolio(); });
+  document.querySelectorAll('.editBtn').forEach(b => b.onclick = e => openModalEditPortfolio(+e.target.dataset.i));
+  document.querySelectorAll('.fetchBtn').forEach(b => b.onclick = async e => {
+    const i = +e.target.dataset.i; const s = appState.portfolio[i].symbol; const old = appState.portfolio[i].live || appState.portfolio[i].buy;
+    const q = await fetchQuoteYahoo(s);
+    if(q && q.regularMarketPrice){ appState.portfolio[i].live = q.regularMarketPrice; saveState(); flashPrice(i, old, q.regularMarketPrice); renderPortfolio(); $('lastUpdated').textContent = new Date().toLocaleString(); } else alert('Price fetch failed for ' + s);
+  });
+}
 
-<script>
-/* The rest of the implementation (render functions and event wiring) is available in the full version.
-   Due to execution constraints this file has been saved with placeholders.
-   Please download the full version I previously generated: /mnt/data/index_enhanced.html
-*/
+function renderIpos(){
+  const tbody = $('ipoBody'); tbody.innerHTML = '';
+  appState.ipos.forEach((it, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="font-medium">${it.title}</td><td>${it.start || '-'}</td><td>${it.end || '-'}</td><td>${it.listing || '-'}</td><td>${it.gmp!==undefined?it.gmp:'-'}</td><td>${it.wishlist? '★':' '}</td><td><button data-i="${idx}" class="px-2 py-1 rounded-md border editIpo">Edit</button> <button data-i="${idx}" class="px-2 py-1 rounded-md border addWishIpo">Toggle Wishlist</button></td>`;
+    tbody.appendChild(tr);
+  });
+  document.querySelectorAll('.editIpo').forEach(b=>b.onclick=e=>openModalEditIpo(+e.target.dataset.i));
+  document.querySelectorAll('.addWishIpo').forEach(b=>b.onclick=e=>{ const i=+e.target.dataset.i; appState.ipos[i].wishlist = !appState.ipos[i].wishlist; if(appState.ipos[i].wishlist) appState.wishlist.push({type:'ipo',id:appState.ipos[i].id||('ipo_'+i),title:appState.ipos[i].title}); else { appState.wishlist = appState.wishlist.filter(w=>!(w.type==='ipo' && w.id==(appState.ipos[i].id||('ipo_'+i)))) } saveState(); renderIpos(); });
+}
+
+function renderNifty(){
+  const tbody = $('niftyBody'); tbody.innerHTML = '';
+  const symbols = DEFAULT_NIFTY;
+  symbols.forEach((s, idx) => {
+    const data = appState.nifty[s] || {};
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input type="checkbox" data-s="${s}" class="niftySelect" /></td><td class="font-medium">${s}</td><td id="cmp-${idx}">${data.price? fmt(data.price): '-'}</td><td id="open-${idx}">${data.open?fmt(data.open):'-'}</td><td id="high-${idx}">${data.high?fmt(data.high):'-'}</td><td id="low-${idx}">${data.low?fmt(data.low):'-'}</td><td id="prev-${idx}">${data.prevClose?fmt(data.prevClose):'-'}</td><td id="52h-${idx}">${data.fiftyTwoWkHigh?fmt(data.fiftyTwoWkHigh):'-'}</td><td id="52l-${idx}">${data.fiftyTwoWkLow?fmt(data.fiftyTwoWkLow):'-'}</td><td><button data-s="${s}" class="px-2 py-1 rounded-md border addWishNifty">Add</button></td>`;
+    tbody.appendChild(tr);
+  });
+  document.querySelectorAll('.addWishNifty').forEach(b=>b.onclick=e=>{ const s=e.target.dataset.s; appState.wishlist.push({type:'nifty',symbol:s}); saveState(); alert(s + ' added to wishlist'); });
+}
+
+// flash animation
+function flashPrice(idx, oldPrice, newPrice){
+  const el = document.getElementById('live-'+idx); if(!el) return;
+  if(newPrice > oldPrice) { el.classList.add('profit'); setTimeout(()=>el.classList.remove('profit'),900); }
+  else if(newPrice < oldPrice){ el.classList.add('loss'); setTimeout(()=>el.classList.remove('loss'),900); }
+}
+
+// refresh prices for portfolio and nifty
+async function refreshAllPrices(){
+  // portfolio
+  for(let i=0;i<appState.portfolio.length;i++){
+    try{
+      const old = appState.portfolio[i].live || appState.portfolio[i].buy;
+      const q = await fetchQuoteYahoo(appState.portfolio[i].symbol);
+      if(q && q.regularMarketPrice){ appState.portfolio[i].live = q.regularMarketPrice; flashPrice(i, old, q.regularMarketPrice); }
+    }catch(e){ console.warn(e); }
+  }
+  // nifty
+  for(const s of DEFAULT_NIFTY){
+    try{
+      const q = await fetchQuoteYahoo(s);
+      if(q){
+        appState.nifty[s] = {
+          price: q.regularMarketPrice,
+          open: q.regularMarketOpen,
+          high: q.regularMarketDayHigh,
+          low: q.regularMarketDayLow,
+          prevClose: q.regularMarketPreviousClose,
+          fiftyTwoWkHigh: q.fiftyTwoWeekHigh,
+          fiftyTwoWkLow: q.fiftyTwoWeekLow
+        };
+      }
+    }catch(e){ console.warn('nifty fetch', e); }
+  }
+  saveState();
+  renderPortfolio(); renderNifty();
+  $('lastUpdated').textContent = new Date().toLocaleString();
+}
+
+// save state per user and optional repo sync
+function saveState(){
+  if(!currentUser) return;
+  saveAppStateForUser(currentUser, appState);
+  if($('autoRepoSync').checked) repoSync();
+}
+
+// combined import/export
+function exportAll(){
+  if(!currentUser){ alert('Login first'); return; }
+  const blob = new Blob([JSON.stringify(appState, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = currentUser + '-nse-full.json'; a.click(); URL.revokeObjectURL(url);
+}
+function importAll(fileContent){
+  try{
+    const d = JSON.parse(fileContent);
+    if(d && typeof d === 'object'){ appState = Object.assign({portfolio:[],ipos:[],wishlist:[],nifty:{}}, d); saveState(); renderAll(); alert('Imported full state'); }
+    else alert('Invalid file');
+  }catch(e){ alert('Invalid JSON'); }
+}
+
+// modal helpers
+function openModal(title, htmlContent, onSave){
+  $('modalTitle').textContent = title; const mb = $('modalBody'); mb.innerHTML = htmlContent;
+  $('modalWrap').classList.remove('hidden');
+  const saveHandler = () => { onSave(); $('modalWrap').classList.add('hidden'); };
+  const cancel = () => { $('modalWrap').classList.add('hidden'); };
+  $('modalCancel').onclick = cancel;
+  $('modalSave').onclick = saveHandler;
+}
+
+function openModalAddPortfolio(){
+  openModal('Add holding', `
+    <label class="block text-sm">Symbol <input id="txSymbol" class="mt-1 w-full rounded-md border p-2" /></label>
+    <label class="block text-sm">Qty <input id="txQty" type="number" class="mt-1 w-full rounded-md border p-2" value="1" /></label>
+    <label class="block text-sm">Buy price ₹ <input id="txBuy" type="number" step="0.01" class="mt-1 w-full rounded-md border p-2" /></label>
+  `, async ()=>{
+    const s = $('txSymbol').value.trim().toUpperCase(); const q = parseFloat($('txQty').value); const b = parseFloat($('txBuy').value);
+    if(!s||!(q>0)||!(b>0)){ alert('Enter valid values'); return; }
+    appState.portfolio.push({symbol:s,qty:q,buy:b}); saveState(); renderPortfolio();
+    const qd = await fetchQuoteYahoo(s); if(qd && qd.regularMarketPrice){ appState.portfolio[appState.portfolio.length-1].live = qd.regularMarketPrice; saveState(); renderPortfolio(); }
+  });
+}
+function openModalEditPortfolio(idx){
+  const it = appState.portfolio[idx];
+  openModal('Edit holding', `
+    <label class="block text-sm">Symbol <input id="txSymbol" class="mt-1 w-full rounded-md border p-2" value="${it.symbol}" /></label>
+    <label class="block text-sm">Qty <input id="txQty" type="number" class="mt-1 w-full rounded-md border p-2" value="${it.qty}" /></label>
+    <label class="block text-sm">Buy price ₹ <input id="txBuy" type="number" step="0.01" class="mt-1 w-full rounded-md border p-2" value="${it.buy}" /></label>
+  `, ()=>{
+    const s = $('txSymbol').value.trim().toUpperCase(); const q = parseFloat($('txQty').value); const b = parseFloat($('txBuy').value);
+    if(!s||!(q>0)||!(b>0)){ alert('Enter valid values'); return; }
+    appState.portfolio[idx].symbol = s; appState.portfolio[idx].qty = q; appState.portfolio[idx].buy = b; saveState(); renderPortfolio();
+  });
+}
+
+function openModalAddIpo(){
+  openModal('Add IPO', `
+    <label class="block text-sm">Title <input id="ipoTitle" class="mt-1 w-full rounded-md border p-2" /></label>
+    <label class="block text-sm">Start date <input id="ipoStart" type="date" class="mt-1 w-full rounded-md border p-2" /></label>
+    <label class="block text-sm">End date <input id="ipoEnd" type="date" class="mt-1 w-full rounded-md border p-2" /></label>
+    <label class="block text-sm">Listing date <input id="ipoListing" type="date" class="mt-1 w-full rounded-md border p-2" /></label>
+    <label class="block text-sm">GMP (optional) <input id="ipoGmp" class="mt-1 w-full rounded-md border p-2" /></label>
+  `, ()=>{
+    const t=$('ipoTitle').value.trim(); if(!t){ alert('Enter title'); return; }
+    const it = { id: 'ipo_' + Date.now(), title: t, start: $('ipoStart').value, end: $('ipoEnd').value, listing: $('ipoListing').value, gmp: $('ipoGmp').value, wishlist:false };
+    appState.ipos.push(it); saveState(); renderIpos();
+  });
+}
+function openModalEditIpo(idx){
+  const it = appState.ipos[idx];
+  openModal('Edit IPO', `
+    <label class="block text-sm">Title <input id="ipoTitle" class="mt-1 w-full rounded-md border p-2" value="${it.title}" /></label>
+    <label class="block text-sm">Start date <input id="ipoStart" type="date" class="mt-1 w-full rounded-md border p-2" value="${it.start||''}" /></label>
+    <label class="block text-sm">End date <input id="ipoEnd" type="date" class="mt-1 w-full rounded-md border p-2" value="${it.end||''}" /></label>
+    <label class="block text-sm">Listing date <input id="ipoListing" type="date" class="mt-1 w-full rounded-md border p-2" value="${it.listing||''}" /></label>
+    <label class="block text-sm">GMP <input id="ipoGmp" class="mt-1 w-full rounded-md border p-2" value="${it.gmp||''}" /></label>
+  `, ()=>{
+    it.title = $('ipoTitle').value.trim(); it.start = $('ipoStart').value; it.end = $('ipoEnd').value; it.listing = $('ipoListing').value; it.gmp = $('ipoGmp').value; saveState(); renderIpos();
+  });
+}
+
+// REPO SYNC - push full appState
+async function repoSync(){
+  const repoVal = $('ghRepo').value.trim(); const path = $('ghPath').value.trim(); const token = $('ghToken').value.trim();
+  if(!repoVal || !path || !token){ $('repoMsg').textContent = 'Enter repo, path and token.'; return; }
+  const [owner, repo] = repoVal.split('/');
+  if(!owner || !repo){ $('repoMsg').textContent = 'Repo must be owner/repo format.'; return; }
+  $('repoMsg').textContent = 'Syncing...';
+  try{
+    const meta = await getFileMeta(owner, repo, path, token);
+    const content = JSON.stringify(appState, null, 2);
+    if(meta === null){
+      await createOrUpdateFile(owner, repo, path, token, content, null);
+      $('repoMsg').textContent = 'File created & synced.'; saveRepoMeta({owner,repo,path});
+    } else {
+      await createOrUpdateFile(owner, repo, path, token, content, meta.sha);
+      $('repoMsg').textContent = 'File updated & synced.'; saveRepoMeta({owner,repo,path,sha:meta.sha});
+    }
+  }catch(err){ console.error(err); $('repoMsg').textContent = 'Sync failed: ' + err.message; }
+}
+
+async function repoLoad(){
+  const repoVal = $('ghRepo').value.trim(); const path = $('ghPath').value.trim(); const token = $('ghToken').value.trim();
+  if(!repoVal || !path){ $('repoMsg').textContent = 'Enter repo and path.'; return; }
+  const [owner, repo] = repoVal.split('/');
+  if(!owner || !repo){ $('repoMsg').textContent = 'Repo must be owner/repo format.'; return; }
+  $('repoMsg').textContent = 'Loading from repo...';
+  try{
+    const meta = await getFileMeta(owner, repo, path, token);
+    if(!meta){ $('repoMsg').textContent = 'File not found in repo.'; return; }
+    const raw = b64_to_utf8(meta.content.replace(/\n/g,'')); const data = JSON.parse(raw);
+    if(!data || typeof data !== 'object'){ $('repoMsg').textContent = 'Repo JSON invalid.'; return; }
+    appState = data; saveState(); renderAll(); $('repoMsg').textContent = 'Loaded portfolio from repo.'; $('lastUpdated').textContent = new Date().toLocaleString();
+  }catch(err){ console.error(err); $('repoMsg').textContent = 'Load failed: ' + err.message; }
+}
+
+// persist login
+function persistLogin(user){
+  if(user) localStorage.setItem(CURRENT_USER_KEY, user); else localStorage.removeItem(CURRENT_USER_KEY);
+}
+function loadPersistedUser(){ return localStorage.getItem(CURRENT_USER_KEY); }
+
+// render all
+function renderAll(){ renderPortfolio(); renderIpos(); renderNifty(); }
+
+// UI wiring and login fixes
+document.addEventListener('DOMContentLoaded', ()=>{
+  // theme
+  const pref = localStorage.getItem('nse_theme_v1') || 'light'; if(pref==='dark') document.documentElement.classList.add('dark');
+
+  const usernameEl = $('username'), pinEl = $('pin');
+
+  // auto-login if persisted
+  const persisted = loadPersistedUser();
+  if(persisted){
+    const users = loadUsers();
+    if(users[persisted]){
+      currentUser = persisted;
+      appState = loadAppStateForUser(currentUser);
+      showLoggedInUI();
+      renderAll();
+      refreshAllPrices();
+      if(autoTimer) clearInterval(autoTimer);
+      autoTimer = setInterval(refreshAllPrices, AUTO_REFRESH_MS);
+      const repoMeta = loadRepoMeta()||{}; if(repoMeta.owner && repoMeta.repo && repoMeta.path) $('ghRepo').value = repoMeta.owner + '/' + repoMeta.repo;
+      const token = localStorage.getItem('nse_repo_token_v1'); if(token) $('ghToken').value = token;
+    } else {
+      persistLogin(null);
+    }
+  }
+
+  // register
+  $('btnRegister').onclick = ()=>{
+    const u = usernameEl.value.trim(), pin = pinEl.value.trim();
+    if(!u || !pin){ $('authMsg').textContent = 'Enter username and 4-digit PIN'; return; }
+    if(pin.length < 4){ $('authMsg').textContent = 'PIN must be 4 digits'; return; }
+    const users = loadUsers(); if(users[u]){ $('authMsg').textContent = 'Username exists'; return; }
+    users[u] = btoa(pin); saveUsers(users);
+    $('authMsg').style.color = 'green'; $('authMsg').textContent = 'Registered — press Login';
+  };
+
+  // login (fixed)
+  $('btnLogin').onclick = ()=>{
+    const u = usernameEl.value.trim(), pin = pinEl.value.trim();
+    $('authMsg').textContent = '';
+    if(!u || !pin){ $('authMsg').textContent = 'Enter username and PIN'; return; }
+    const users = loadUsers();
+    if(users[u] && users[u] === btoa(pin)){
+      currentUser = u;
+      persistLogin(u); // persist across refresh
+      appState = loadAppStateForUser(currentUser);
+      showLoggedInUI();
+      renderAll();
+      refreshAllPrices();
+      if(autoTimer) clearInterval(autoTimer);
+      autoTimer = setInterval(refreshAllPrices, AUTO_REFRESH_MS);
+      const repoMeta = loadRepoMeta()||{}; if(repoMeta.owner && repoMeta.repo && repoMeta.path) $('ghRepo').value = repoMeta.owner + '/' + repoMeta.repo;
+      const token = localStorage.getItem('nse_repo_token_v1'); if(token) $('ghToken').value = token;
+    } else {
+      $('authMsg').textContent = 'Invalid username or PIN';
+    }
+  };
+
+  // logout
+  $('btnLogout').onclick = ()=>{ currentUser=null; appState={portfolio:[],ipos:[],wishlist:[],nifty:{}}; persistLogin(null); if(autoTimer) clearInterval(autoTimer); hideLoggedInUI(); };
+
+  // tabs
+  const tabs = { portfolio: $('tabPortfolio'), ipos: $('tabIPOs'), nifty: $('tabNifty') };
+  tabs.portfolio.onclick = ()=> setActiveTab('portfolio');
+  tabs.ipos.onclick = ()=> setActiveTab('ipos');
+  tabs.nifty.onclick = ()=> setActiveTab('nifty');
+
+  function setActiveTab(name){
+    tabs.portfolio.classList.remove('active'); tabs.ipos.classList.remove('active'); tabs.nifty.classList.remove('active');
+    $('panelPortfolio').classList.add('hidden'); $('panelIPOs').classList.add('hidden'); $('panelNifty').classList.add('hidden');
+    if(name==='portfolio'){ tabs.portfolio.classList.add('active'); $('panelPortfolio').classList.remove('hidden'); }
+    if(name==='ipos'){ tabs.ipos.classList.add('active'); $('panelIPOs').classList.remove('hidden'); }
+    if(name==='nifty'){ tabs.nifty.classList.add('active'); $('panelNifty').classList.remove('hidden'); }
+  }
+
+  // add contextual
+  $('btnAdd').onclick = ()=>{ if(tabs.portfolio.classList.contains('active')) openModalAddPortfolio(); else if(tabs.ipos.classList.contains('active')) openModalAddIpo(); else alert('To add Nifty items use the Add button on rows'); };
+
+  // refresh page (keep login)
+  $('btnRefreshPage').onclick = ()=>{ location.reload(); };
+
+  // fetch all prices
+  $('btnFetchAll').onclick = async ()=>{ $('statusMsg').textContent = 'Refreshing...'; await refreshAllPrices(); $('statusMsg').textContent = 'Prices updated'; };
+
+  // IPO actions
+  $('btnAddIpo').onclick = openModalAddIpo;
+  $('btnFetchIpos').onclick = ()=>{ const sample = [ { id:'ipo_a', title:'ABC Corp IPO', start:'2025-10-27', end:'2025-10-29', listing:'2025-11-05', gmp:'+12%', wishlist:false }, { id:'ipo_b', title:'XYZ Ltd IPO', start:'2025-11-03', end:'2025-11-05', listing:'2025-11-12', gmp:'-5%', wishlist:false } ]; appState.ipos = appState.ipos.concat(sample); saveState(); renderIpos(); alert('Sample IPOs added (current & upcoming)'); };
+
+  // import/export combined
+  $('btnExport').onclick = exportAll;
+  $('btnImport').onclick = ()=>$('fileInput').click();
+  $('fileInput').onchange = e => { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = ()=> importAll(r.result); r.readAsText(f); };
+
+  // nifty actions
+  $('btnFetchNifty').onclick = async ()=>{ await refreshAllPrices(); alert('Nifty data refreshed'); };
+  $('btnAddWishlistFromNifty').onclick = ()=>{ const checks = document.querySelectorAll('.niftySelect:checked'); checks.forEach(cb=>{ appState.wishlist.push({type:'nifty',symbol:cb.dataset.s}); }); saveState(); alert('Selected added to wishlist'); };
+
+  // repo connect / sync
+  $('btnRepoConnect').onclick = ()=>{ const token = $('ghToken').value.trim(); if(!token){ $('repoMsg').textContent = 'Enter token'; return; } localStorage.setItem('nse_repo_token_v1', token); $('repoMsg').textContent = 'Token saved locally.'; };
+  $('btnRepoSync').onclick = async ()=>{ await repoSync(); };
+  $('btnRepoSync').ondblclick = async ()=>{ await repoLoad(); };
+
+  // modal cancel
+  $('modalCancel').onclick = ()=>$('modalWrap').classList.add('hidden');
+
+  // show/hide helpers
+  function showLoggedInUI(){ $('authForm').classList.add('hidden'); $('userPanel').classList.remove('hidden'); $('contentCard').classList.remove('hidden'); $('displayUser').textContent = currentUser; setActiveTab('portfolio'); renderAll(); }
+  function hideLoggedInUI(){ $('authForm').classList.remove('hidden'); $('userPanel').classList.add('hidden'); $('contentCard').classList.add('hidden'); $('displayUser').textContent = ''; }
+
+});
 </script>
 </body>
 </html>
